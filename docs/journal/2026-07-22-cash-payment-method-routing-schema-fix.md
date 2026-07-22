@@ -17,8 +17,8 @@ Le fichier de référence a depuis été re-synchronisé avec la vraie source.
 1. **VARCHAR(30) vs VARCHAR(20)** sur `cash_routing_type.code` et
    `cash_payment_method_routing.routing_type_code` (vrai schéma = 20).
 2. **Seed `cash_payment_method_routing` manquant** — le vrai schéma seed
-   tous les modes Règlements via `SELECT … WHERE code IN (…)` (11 lignes :
-   AD/CB/PE, C/LC, E, PC, V, VE, RC/RI).
+   les modes Règlements via `SELECT … WHERE code IN (…)` (10 modes :
+   AD/CB, C/LC, E, PC, V, VE, RC/RI — sans `PE`).
 3. **`ON CONFLICT DO NOTHING`** improvisé sur l’INSERT `cash_routing_type`
    — absent de la source figée.
 4. Labels / COMMENT ON TABLE divergents (textes simplifiés vs source).
@@ -42,8 +42,8 @@ Repris tels quels du schéma (pas définitifs) :
 
 ## Tests
 
-`test_seeded_payment_method_routing_matches_schema` vérifie les 11 modes
-seedés et leur `routing_type_code`.
+`test_seeded_payment_method_routing_matches_schema` vérifie les 10 modes
+seedés et leur `routing_type_code` (coquille `PE` retirée des migrations).
 
 ## Qualité
 
