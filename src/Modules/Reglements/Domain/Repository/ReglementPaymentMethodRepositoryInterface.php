@@ -8,5 +8,7 @@ use App\Modules\Reglements\Domain\Entity\ReglementPaymentMethod;
 
 interface ReglementPaymentMethodRepositoryInterface
 {
+    public function findById(int $id): ?ReglementPaymentMethod;
+
     public function findByCode(string $code): ?ReglementPaymentMethod;
 }

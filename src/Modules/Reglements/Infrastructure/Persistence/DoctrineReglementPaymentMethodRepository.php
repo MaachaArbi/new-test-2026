@@ -15,6 +15,14 @@ final class DoctrineReglementPaymentMethodRepository implements ReglementPayment
     ) {
     }
 
+    public function findById(int $id): ?ReglementPaymentMethod
+    {
+        /** @var ReglementPaymentMethod|null $method */
+        $method = $this->unitOfWork->find(ReglementPaymentMethod::class, $id);
+
+        return $method;
+    }
+
     public function findByCode(string $code): ?ReglementPaymentMethod
     {
         /** @var ReglementPaymentMethod|null $method */

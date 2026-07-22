@@ -49,6 +49,12 @@ doctrine:
                 dir: '%kernel.project_dir%/config/doctrine/mappings/Reglements'
                 prefix: 'App\Modules\Reglements\Domain\Entity'
                 alias: Reglements
+            CashManagement:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/config/doctrine/mappings/CashManagement'
+                prefix: 'App\Modules\CashManagement\Domain\Entity'
+                alias: CashManagement
 
 # Tests d'intégration : PostgreSQL réel via DATABASE_URL (.env.test → 127.0.0.1:5432).
 # Pas de SQLite. Pas de dbname_suffix automatique.

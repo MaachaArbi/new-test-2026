@@ -33,6 +33,10 @@ use App\Modules\Booking\Domain\Exception\InvalidBookingCancellationTierException
 use App\Modules\Booking\Domain\Exception\InvalidBookingCarRentalDetailException;
 use App\Modules\Booking\Domain\Exception\InvalidBookingStateException;
 use App\Modules\Booking\Domain\Exception\InvalidBookingTransportSegmentException;
+use App\Modules\CashManagement\Domain\Exception\CashPaymentMethodRoutingAlreadyExistsException;
+use App\Modules\CashManagement\Domain\Exception\CashPaymentMethodRoutingNotFoundException;
+use App\Modules\CashManagement\Domain\Exception\CashRoutingTypeNotFoundException;
+use App\Modules\CashManagement\Domain\Exception\InvalidCashPaymentMethodRoutingException;
 use App\Modules\Core\Domain\Exception\InvalidCoreCredentialStateException;
 use App\Modules\Party\Domain\Exception\InvalidPartyAccountStateException;
 use App\Modules\Party\Domain\Exception\PartyAccountFunctionAssignmentNotFoundException;
@@ -171,6 +175,10 @@ final class ErrorsTranslationCatalogueTest extends KernelTestCase
             ReglementMatchingBookMismatchException::forEntries(1, 2)->errorCode(),
             ReglementMatchingExceedsCreditException::forCredit(1, 100, 50, 60)->errorCode(),
             ReglementMatchingExceedsDebitException::forDebit(1, 100, 50, 60)->errorCode(),
+            CashRoutingTypeNotFoundException::forCode('missing')->errorCode(),
+            CashPaymentMethodRoutingNotFoundException::forPaymentMethodId(999_999_978)->errorCode(),
+            CashPaymentMethodRoutingAlreadyExistsException::forPaymentMethodId(1)->errorCode(),
+            InvalidCashPaymentMethodRoutingException::inconsistentTracking('aucun', 'individual')->errorCode(),
         ];
     }
 }

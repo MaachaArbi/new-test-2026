@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Extension 1-1 : PK = payment_method_id (aussi FK reglement_payment_method).
+      strategy NONE = identifiant assigné par l'application.
+      Colonnes non mappées : created_at, updated_at (trigger SQL).
+    -->
+    <entity name="App\Modules\CashManagement\Domain\Entity\CashPaymentMethodRouting"
+            table="cash_payment_method_routing">
+        <id name="paymentMethodId" type="bigint" column="payment_method_id">
+            <generator strategy="NONE"/>
+        </id>
+
+        <field name="routingTypeCode" type="string" column="routing_type_code" length="30" nullable="false"/>
+        <field name="instrumentTrackingMode"
+                enum-type="App\Modules\CashManagement\Domain\ValueObject\InstrumentTrackingMode"
+                column="instrument_tracking_mode"
+                length="20"
+                nullable="false"/>
+        <field name="strictSourceIsolation" type="boolean" column="strict_source_isolation" nullable="false"/>
+        <field name="requiresCustodyCheck" type="boolean" column="requires_custody_check" nullable="false"/>
+        <field name="isActive" type="boolean" column="is_active" nullable="false"/>
+    </entity>
+</doctrine-mapping>

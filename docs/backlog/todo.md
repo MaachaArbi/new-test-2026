@@ -50,6 +50,15 @@
 - [ ] Orchestration auto-matching (compose les primitives)
 - [ ] Clone phpcpd **accepté** : `BookingHttpSupport` ↔ `ReglementsHttpSupport` (decode+validate+json). Isolation module — pas d'extraction Shared sans vague dédiée.
 
+## Cash Management
+
+- [x] Référentiel routing (`cash_routing_type` + `cash_payment_method_routing`, contrainte croisée Domain) — **clos** — `2026-07-22-cash-payment-method-routing.md`
+- [ ] Seed initial `cash_payment_method_routing` pour les modes existants (E/C/V/… selon `payment_method_id`) — suite logique documentée
+- [ ] Pivot `cash_session` / `cash_movement` (+ balances/counts)
+- [ ] Fonctions PL/pgSQL à appeler (validate / reverse / allocate / …)
+- [ ] Banque, dépôts, transmission externe, rapprochement
+- [ ] HTTP Cash Management
+
 ## Core
 
 - [x] `CoreCredential` Domain (enum provider, port hasher, agrégat, repo) — **clos** ; Session/MFA hors périmètre
