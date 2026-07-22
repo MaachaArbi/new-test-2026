@@ -25,10 +25,11 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 {
-    /** @var array<string, string> code => routing_type_code attendu (10 modes seedés) */
+    /** @var array<string, string> code => routing_type_code attendu (11 modes seedés) */
     private const SEEDED_ROUTING = [
         'AD' => 'aucun',
         'CB' => 'aucun',
+        'PE' => 'aucun',
         'C' => 'caisse',
         'LC' => 'caisse',
         'E' => 'caisse',
@@ -109,7 +110,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
     public function test_seeded_payment_method_routing_matches_schema(): void
     {
-        self::assertCount(10, self::SEEDED_ROUTING);
+        self::assertCount(11, self::SEEDED_ROUTING);
 
         foreach (self::SEEDED_ROUTING as $methodCode => $expectedRouting) {
             $method = $this->paymentMethodRepository->findByCode($methodCode);
@@ -125,10 +126,10 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
             'SELECT COUNT(*)
              FROM cash_payment_method_routing r
              JOIN reglement_payment_method m ON m.id = r.payment_method_id
-             WHERE m.code IN (\'AD\',\'CB\',\'C\',\'LC\',\'E\',\'PC\',\'V\',\'VE\',\'RC\',\'RI\')',
+             WHERE m.code IN (\'AD\',\'CB\',\'PE\',\'C\',\'LC\',\'E\',\'PC\',\'V\',\'VE\',\'RC\',\'RI\')',
         );
         self::assertNotFalse($rawCount);
-        self::assertSame(10, (int) (is_numeric($rawCount) ? $rawCount : 0));
+        self::assertSame(11, (int) (is_numeric($rawCount) ? $rawCount : 0));
     }
 
     public function test_create_aucun_with_individual_rejected_before_sql(): void

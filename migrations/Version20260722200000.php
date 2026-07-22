@@ -86,7 +86,7 @@ CREATE TRIGGER trg_cash_payment_method_routing_updated_at BEFORE UPDATE ON cash_
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'aucun', 'not_applicable', false FROM reglement_payment_method WHERE code IN ('AD','CB');
+SELECT id, 'aucun', 'not_applicable', false FROM reglement_payment_method WHERE code IN ('AD','CB','PE');
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
 SELECT id, 'caisse', 'individual', false FROM reglement_payment_method WHERE code IN ('C','LC');
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)

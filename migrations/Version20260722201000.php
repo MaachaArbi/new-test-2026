@@ -43,7 +43,7 @@ UPDATE cash_routing_type SET label = 'Scriptural pur, hors périmètre Cash Mana
 TRUNCATE cash_payment_method_routing;
 
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'aucun', 'not_applicable', false FROM reglement_payment_method WHERE code IN ('AD','CB');
+SELECT id, 'aucun', 'not_applicable', false FROM reglement_payment_method WHERE code IN ('AD','CB','PE');
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
 SELECT id, 'caisse', 'individual', false FROM reglement_payment_method WHERE code IN ('C','LC');
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
