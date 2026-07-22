@@ -2,7 +2,7 @@
 
 **Symfony** 7.4.14 · **PHP** 8.4.23 · **Postgres** 16  
 **phpcpd** 6.0.3 · **reference/** présent  
-**Qualité** : phpstan OK · deptrac 0 · phpunit 376/2482 · phpcpd clones acceptés (todo)
+**Qualité** : phpstan OK · deptrac 0 · phpunit 377/2531 · phpcpd clones acceptés (todo)
 
 ## Modules
 
@@ -17,9 +17,8 @@
 
 ## Dernière action
 
-Référentiel Cash Management routing (`cash_routing_type` +
-`cash_payment_method_routing`) —
-`docs/journal/2026-07-22-cash-payment-method-routing.md`
+Alignement migration Cash routing sur schéma officiel —
+`docs/journal/2026-07-22-cash-payment-method-routing-schema-fix.md`
 
 ## Prochaine action
 

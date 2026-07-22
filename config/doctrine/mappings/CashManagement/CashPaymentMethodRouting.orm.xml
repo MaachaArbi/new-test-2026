@@ -15,7 +15,7 @@
             <generator strategy="NONE"/>
         </id>
 
-        <field name="routingTypeCode" type="string" column="routing_type_code" length="30" nullable="false"/>
+        <field name="routingTypeCode" type="string" column="routing_type_code" length="20" nullable="false"/>
         <field name="instrumentTrackingMode"
                 enum-type="App\Modules\CashManagement\Domain\ValueObject\InstrumentTrackingMode"
                 column="instrument_tracking_mode"

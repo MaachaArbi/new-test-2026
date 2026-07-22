@@ -12,15 +12,14 @@ use RuntimeException;
 /**
  * Slice Cash Management — référentiel routing uniquement.
  *
+ * Aligné sur reference/schemas/schema-cash-management-v1.sql (§1 ROUTING).
  * Hors périmètre : cash_session, cash_movement, fonctions PL/pgSQL.
- * Seed routing_type : 4 lignes. Pas de seed cash_payment_method_routing
- * (dépend des payment_method_id déjà en base — suite logique documentée).
  */
 final class Version20260722200000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Import cash_routing_type (seed) + cash_payment_method_routing (structure)';
+        return 'Import cash_routing_type + cash_payment_method_routing (seed inclus)';
     }
 
     public function isTransactional(): bool
@@ -31,53 +30,75 @@ final class Version20260722200000 extends AbstractMigration
     public function up(Schema $schema): void
     {
         $sql = <<<'SQL'
-CREATE TABLE IF NOT EXISTS cash_routing_type (
-    code       VARCHAR(30) PRIMARY KEY,
-    label      VARCHAR(80) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE cash_routing_type (
+    code        VARCHAR(20) PRIMARY KEY,
+    label       VARCHAR(80) NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE cash_routing_type IS
-'Référentiel de destination physique (table, jamais ENUM).
- Seed : caisse / banque_directe / transmission_externe / aucun.';
+'Destination physique d''un mode de règlement une fois la pièce créée dans Règlements.
+ caisse = transite par une session utilisateur ; banque_directe = atterrit
+ directement en banque sans jamais passer par une caisse (ex: virement reçu,
+ versement espèce au guichet bancaire) ; transmission_externe = doit être
+ physiquement transmis à un tiers émetteur avant remboursement (ex: bon de
+ commande amicale) ; aucun = scriptural pur, Cash Management ne le voit jamais.';
 
 INSERT INTO cash_routing_type (code, label) VALUES
-    ('caisse', 'Caisse'),
-    ('banque_directe', 'Banque directe'),
-    ('transmission_externe', 'Transmission externe'),
-    ('aucun', 'Aucun routing / hors cash')
-ON CONFLICT (code) DO NOTHING;
+    ('caisse',               'Passe par une session de caisse'),
+    ('banque_directe',       'Atterrit directement en banque, sans caisse'),
+    ('transmission_externe', 'Transmis physiquement à un tiers émetteur'),
+    ('aucun',                'Scriptural pur, hors périmètre Cash Management');
 
-CREATE TABLE IF NOT EXISTS cash_payment_method_routing (
-    payment_method_id        BIGINT PRIMARY KEY
-                               REFERENCES reglement_payment_method(id),
-    routing_type_code        VARCHAR(30) NOT NULL
-                               REFERENCES cash_routing_type(code),
-    instrument_tracking_mode VARCHAR(20) NOT NULL
-                               CHECK (instrument_tracking_mode IN (
-                                   'individual', 'aggregate', 'not_applicable'
-                               )),
+CREATE TABLE cash_payment_method_routing (
+    payment_method_id        BIGINT PRIMARY KEY REFERENCES reglement_payment_method(id),
+    routing_type_code        VARCHAR(20) NOT NULL REFERENCES cash_routing_type(code),
+
+    instrument_tracking_mode VARCHAR(20) NOT NULL DEFAULT 'not_applicable'
+                                CHECK (instrument_tracking_mode IN ('individual','aggregate','not_applicable')),
+
     strict_source_isolation  BOOLEAN NOT NULL DEFAULT false,
+
     requires_custody_check   BOOLEAN NOT NULL DEFAULT true,
     is_active                BOOLEAN NOT NULL DEFAULT true,
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    created_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+
     CONSTRAINT chk_routing_tracking_consistency CHECK (
-        (routing_type_code = 'aucun'
-            AND instrument_tracking_mode = 'not_applicable')
-        OR
-        (routing_type_code <> 'aucun'
-            AND instrument_tracking_mode <> 'not_applicable')
+        (routing_type_code = 'aucun' AND instrument_tracking_mode = 'not_applicable')
+        OR (routing_type_code <> 'aucun' AND instrument_tracking_mode <> 'not_applicable')
     )
 );
 
 COMMENT ON TABLE cash_payment_method_routing IS
-'Extension 1-1 de reglement_payment_method. Pilote 100% du routing Cash
- Management — aucun code mode (E/C/V…) en dur. Modifiable par UPDATE.';
+'Extension 1-1 de reglement_payment_method (même pattern que party_account_office
+ sur party_account). Créer un nouveau mode de règlement = ajouter une ligne
+ reglement_payment_method + une ligne ici. Le moteur ne connaît plus aucun
+ code de mode de règlement en dur : il lit routing_type_code et
+ instrument_tracking_mode. is_cash_like (Règlements) répond à "transite
+ physiquement" ; routing_type_code répond à "vers où" — les deux peuvent
+ diverger (ex: virement V est is_cash_like=false côté Règlements mais
+ routing_type_code=banque_directe ici, car il doit être rapproché sur relevé
+ même sans jamais toucher une caisse).';
 
-CREATE TRIGGER trg_cash_payment_method_routing_updated_at
-    BEFORE UPDATE ON cash_payment_method_routing
+CREATE TRIGGER trg_cash_payment_method_routing_updated_at BEFORE UPDATE ON cash_payment_method_routing
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
+SELECT id, 'aucun', 'not_applicable', false FROM reglement_payment_method WHERE code IN ('AD','CB','PE');
+INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
+SELECT id, 'caisse', 'individual', false FROM reglement_payment_method WHERE code IN ('C','LC');
+INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
+SELECT id, 'caisse', 'individual', true FROM reglement_payment_method WHERE code = 'E';
+INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
+SELECT id, 'transmission_externe', 'individual', false FROM reglement_payment_method WHERE code = 'PC';
+INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
+SELECT id, 'banque_directe', 'individual', false FROM reglement_payment_method WHERE code = 'V';
+INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
+SELECT id, 'banque_directe', 'individual', false FROM reglement_payment_method WHERE code = 'VE';
+INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
+SELECT id, 'aucun', 'not_applicable', false FROM reglement_payment_method WHERE code IN ('RC','RI');
 SQL;
 
         $this->execSqlFile($this->connection, $sql);

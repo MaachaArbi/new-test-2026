@@ -14,7 +14,9 @@ use App\Modules\CashManagement\Domain\Repository\CashPaymentMethodRoutingReposit
 use App\Modules\CashManagement\Domain\Repository\CashRoutingTypeRepositoryInterface;
 use App\Modules\CashManagement\Domain\ValueObject\InstrumentTrackingMode;
 use App\Modules\Reglements\Domain\Repository\ReglementPaymentMethodRepositoryInterface;
+use App\Shared\Domain\ValueObject\PublicId;
 use App\Shared\Infrastructure\Persistence\UnitOfWork;
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -23,9 +25,26 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 {
+    /** @var array<string, string> code => routing_type_code attendu (seed schéma) */
+    private const SEEDED_ROUTING = [
+        'AD' => 'aucun',
+        'CB' => 'aucun',
+        'PE' => 'aucun',
+        'C' => 'caisse',
+        'LC' => 'caisse',
+        'E' => 'caisse',
+        'PC' => 'transmission_externe',
+        'V' => 'banque_directe',
+        'VE' => 'banque_directe',
+        'RC' => 'aucun',
+        'RI' => 'aucun',
+    ];
+
     private UnitOfWork $unitOfWork;
 
     private EntityManagerInterface $em;
+
+    private Connection $connection;
 
     private ReglementPaymentMethodRepositoryInterface $paymentMethodRepository;
 
@@ -49,6 +68,10 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         /** @var EntityManagerInterface $em */
         $em = $container->get(EntityManagerInterface::class);
         $this->em = $em;
+
+        /** @var Connection $connection */
+        $connection = $container->get(Connection::class);
+        $this->connection = $connection;
 
         /** @var ReglementPaymentMethodRepositoryInterface $paymentMethodRepository */
         $paymentMethodRepository = $container->get(ReglementPaymentMethodRepositoryInterface::class);
@@ -85,9 +108,33 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         }
     }
 
+    public function test_seeded_payment_method_routing_matches_schema(): void
+    {
+        self::assertCount(11, self::SEEDED_ROUTING);
+
+        foreach (self::SEEDED_ROUTING as $methodCode => $expectedRouting) {
+            $method = $this->paymentMethodRepository->findByCode($methodCode);
+            self::assertNotNull($method, $methodCode);
+            self::assertNotNull($method->id());
+
+            $routing = $this->routingRepository->findByPaymentMethodId((int) $method->id());
+            self::assertNotNull($routing, 'seed manquant pour '.$methodCode);
+            self::assertSame($expectedRouting, $routing->routingTypeCode(), $methodCode);
+        }
+
+        $rawCount = $this->connection->fetchOne(
+            'SELECT COUNT(*)
+             FROM cash_payment_method_routing r
+             JOIN reglement_payment_method m ON m.id = r.payment_method_id
+             WHERE m.code IN (\'AD\',\'CB\',\'PE\',\'C\',\'LC\',\'E\',\'PC\',\'V\',\'VE\',\'RC\',\'RI\')',
+        );
+        self::assertNotFalse($rawCount);
+        self::assertSame(11, (int) (is_numeric($rawCount) ? $rawCount : 0));
+    }
+
     public function test_create_aucun_with_individual_rejected_before_sql(): void
     {
-        $methodId = $this->unusedPaymentMethodId('CB');
+        $methodId = $this->insertTemporaryPaymentMethod('TX');
 
         try {
             ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
@@ -106,7 +153,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
     public function test_create_caisse_with_not_applicable_rejected_before_sql(): void
     {
-        $methodId = $this->unusedPaymentMethodId('V');
+        $methodId = $this->insertTemporaryPaymentMethod('TY');
 
         try {
             ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
@@ -125,7 +172,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
     public function test_create_valid_round_trip(): void
     {
-        $methodId = $this->unusedPaymentMethodId('E');
+        $methodId = $this->insertTemporaryPaymentMethod('TZ');
 
         $created = ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
             paymentMethodId: $methodId,
@@ -154,14 +201,9 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
     public function test_update_inconsistent_tracking_rejected(): void
     {
-        $methodId = $this->unusedPaymentMethodId('C');
-
-        ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
-            paymentMethodId: $methodId,
-            routingTypeCode: 'caisse',
-            instrumentTrackingMode: 'individual',
-            strictSourceIsolation: false,
-        ));
+        $cheque = $this->paymentMethodRepository->findByCode('C');
+        self::assertNotNull($cheque);
+        $methodId = (int) $cheque->id();
 
         try {
             ($this->updateHandler)(new UpdateCashPaymentMethodRoutingCommand(
@@ -186,14 +228,9 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
     public function test_duplicate_payment_method_routing_rejected(): void
     {
-        $methodId = $this->unusedPaymentMethodId('LC');
-
-        ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
-            paymentMethodId: $methodId,
-            routingTypeCode: 'caisse',
-            instrumentTrackingMode: 'aggregate',
-            strictSourceIsolation: false,
-        ));
+        $cheque = $this->paymentMethodRepository->findByCode('E');
+        self::assertNotNull($cheque);
+        $methodId = (int) $cheque->id();
 
         try {
             ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
@@ -210,7 +247,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
     public function test_update_valid_round_trip(): void
     {
-        $methodId = $this->unusedPaymentMethodId('PC');
+        $methodId = $this->insertTemporaryPaymentMethod('TU');
 
         ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
             paymentMethodId: $methodId,
@@ -238,28 +275,35 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         self::assertFalse($reloaded->requiresCustodyCheck());
     }
 
-    /**
-     * Choisit un payment_method seedé sans routing déjà posé (tests non isolés en truncate).
-     */
-    private function unusedPaymentMethodId(string $preferredCode): int
+    private function insertTemporaryPaymentMethod(string $code): int
     {
-        $preferred = $this->paymentMethodRepository->findByCode($preferredCode);
-        self::assertNotNull($preferred);
-        self::assertNotNull($preferred->id());
+        $this->connection->executeStatement(
+            'INSERT INTO reglement_payment_method (public_id, code, label, is_cash_like, is_active)
+             VALUES (:public_id, :code, :label, false, true)
+             ON CONFLICT (code) DO NOTHING',
+            [
+                'public_id' => PublicId::generate()->toString(),
+                'code' => $code,
+                'label' => 'Temp '.$code,
+            ],
+        );
 
-        if ($this->routingRepository->findByPaymentMethodId((int) $preferred->id()) === null) {
-            return (int) $preferred->id();
-        }
+        $id = $this->connection->fetchOne(
+            'SELECT id FROM reglement_payment_method WHERE code = :code',
+            ['code' => $code],
+        );
+        self::assertNotFalse($id);
+        self::assertNotNull($id);
+        self::assertTrue(is_numeric($id));
 
-        foreach (['AD', 'CB', 'C', 'E', 'V', 'VE', 'LC', 'PC', 'RC', 'PE', 'RI'] as $code) {
-            $method = $this->paymentMethodRepository->findByCode($code);
-            self::assertNotNull($method);
-            self::assertNotNull($method->id());
-            if ($this->routingRepository->findByPaymentMethodId((int) $method->id()) === null) {
-                return (int) $method->id();
-            }
-        }
+        $paymentMethodId = (int) $id;
 
-        self::fail('Aucun payment_method libre pour le test routing');
+        $this->connection->executeStatement(
+            'DELETE FROM cash_payment_method_routing WHERE payment_method_id = :id',
+            ['id' => $paymentMethodId],
+        );
+        $this->em->clear();
+
+        return $paymentMethodId;
     }
 }

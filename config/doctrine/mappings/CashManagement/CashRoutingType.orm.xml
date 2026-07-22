@@ -10,7 +10,7 @@
       PK = code (strategy NONE).
     -->
     <entity name="App\Modules\CashManagement\Domain\Entity\CashRoutingType" table="cash_routing_type">
-        <id name="code" type="string" column="code" length="30">
+        <id name="code" type="string" column="code" length="20">
             <generator strategy="NONE"/>
         </id>
 
