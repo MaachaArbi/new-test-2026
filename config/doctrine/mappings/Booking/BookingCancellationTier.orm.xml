@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Paliers 1-N d'un barème. PK IDENTITY.
+      policy_id : bigint simple (pas d'association Doctrine complexe).
+      penalty_value : decimal → string PHP (jamais float), comme ExchangeRate.
+      threshold_time : string HH:MM:SS (TIME Postgres).
+      Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingCancellationTier"
+            table="booking_cancellation_tier">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="policyId" type="bigint" column="policy_id" nullable="false"/>
+        <field name="daysBeforeStart" type="integer" column="days_before_start" nullable="false"/>
+        <field name="thresholdTime" type="string" column="threshold_time" nullable="true"/>
+        <field name="minStayNights" type="smallint" column="min_stay_nights" nullable="true"/>
+        <field name="maxStayNights" type="smallint" column="max_stay_nights" nullable="true"/>
+        <field name="penaltyType"
+                enum-type="App\Modules\Booking\Domain\ValueObject\PenaltyType"
+                column="penalty_type"
+                length="20"
+                nullable="false"/>
+        <field name="penaltyValue" type="decimal" column="penalty_value" precision="14" scale="3" nullable="true"/>
+        <field name="sortOrder" type="smallint" column="sort_order" nullable="false"/>
+    </entity>
+</doctrine-mapping>

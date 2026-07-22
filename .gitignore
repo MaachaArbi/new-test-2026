@@ -1,0 +1,37 @@
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> friendsofphp/php-cs-fixer ###
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+.phpunit.result.cache
+###< phpunit/phpunit ###
+
+###> quality ###
+/.deptrac.cache
+/var/phpstan/
+/tools/*.phar
+###< quality ###
+
+###> lexik/jwt-authentication-bundle ###
+# Clés RSA — jamais commitées
+/config/jwt/
+###< lexik/jwt-authentication-bundle ###
+
+###> front-jetable ###
+/front-jetable/node_modules/
+/front-jetable/dist/
+###< front-jetable ###

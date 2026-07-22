@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Snapshot voyageur — table non partitionnée, PK IDENTITY.
+      booking_id : bigint applicatif (booking partitionné).
+      hotel_room_id / party_account_id : bigint (FK SQL côté migration ;
+      pas d'association Doctrine ManyToOne dans cette vague).
+      Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingTraveler" table="booking_traveler">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="bookingId" type="bigint" column="booking_id" nullable="false"/>
+        <field name="hotelRoomId" type="bigint" column="hotel_room_id" nullable="true"/>
+        <field name="partyAccountId" type="bigint" column="party_account_id" nullable="true"/>
+        <field name="firstName" type="string" column="first_name" length="150" nullable="false"/>
+        <field name="lastName" type="string" column="last_name" length="150" nullable="false"/>
+        <field name="civility" type="string" column="civility" length="10" nullable="true"/>
+        <field name="phone" type="string" column="phone" length="50" nullable="true"/>
+        <field name="email" type="string" column="email" length="255" nullable="true"/>
+        <field name="age" type="smallint" column="age" nullable="true"/>
+        <field name="birthDate" type="date_immutable" column="birth_date" nullable="true"/>
+        <field name="birthPlace" type="string" column="birth_place" length="150" nullable="true"/>
+        <field name="nationalityCountryId" type="bigint" column="nationality_country_id" nullable="true"/>
+        <field name="residenceCountryId" type="bigint" column="residence_country_id" nullable="true"/>
+        <field name="documentType" type="string" column="document_type" length="30" nullable="true"/>
+        <field name="documentNumber" type="string" column="document_number" length="50" nullable="true"/>
+        <field name="drivingLicenseNumber" type="string" column="driving_license_number" length="50" nullable="true"/>
+        <field name="isPaxLeader" type="boolean" column="is_pax_leader" nullable="false"/>
+        <field name="ticketNumber" type="string" column="ticket_number" length="50" nullable="true"/>
+        <field name="pnr" type="string" column="pnr" length="20" nullable="true"/>
+        <field name="travelClass" type="string" column="travel_class" length="10" nullable="true"/>
+    </entity>
+</doctrine-mapping>

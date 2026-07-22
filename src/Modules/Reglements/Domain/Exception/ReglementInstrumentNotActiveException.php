@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Reglements\Domain\Exception;
+
+use App\Shared\Domain\Exception\DomainException;
+
+final class ReglementInstrumentNotActiveException extends DomainException
+{
+    public function errorCode(): string
+    {
+        return 'reglement_instrument.not_active';
+    }
+
+    public static function forId(int $instrumentId, string $statusCode): self
+    {
+        return new self(
+            sprintf('Instrument %d is not active (status="%s").', $instrumentId, $statusCode),
+            ['instrument_id' => $instrumentId, 'status_code' => $statusCode],
+        );
+    }
+}

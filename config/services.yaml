@@ -1,0 +1,140 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Modules/*/Domain/Entity/'
+            - '../src/Modules/*/Domain/ValueObject/'
+            - '../src/Shared/Domain/'
+            # Adapter UserInterface — créé par le UserProvider, pas un service DI.
+            - '../src/Modules/Core/Infrastructure/Security/SecurityUser.php'
+
+    App\Shared\Infrastructure\Persistence\UnitOfWork:
+        public: true
+
+    App\Modules\Party\Domain\Repository\PartyAccountRepositoryInterface:
+        alias: App\Modules\Party\Infrastructure\Persistence\DoctrinePartyAccountRepository
+        public: true
+
+    App\Modules\Party\Domain\Repository\PartyAccountRoleAssignmentRepositoryInterface:
+        alias: App\Modules\Party\Infrastructure\Persistence\DoctrinePartyAccountRoleAssignmentRepository
+        public: true
+
+    App\Modules\Party\Domain\Repository\PartyAccountFunctionAssignmentRepositoryInterface:
+        alias: App\Modules\Party\Infrastructure\Persistence\DoctrinePartyAccountFunctionAssignmentRepository
+        public: true
+
+    App\Modules\Party\Domain\Repository\PartyAccountGroupRepositoryInterface:
+        alias: App\Modules\Party\Infrastructure\Persistence\DoctrinePartyAccountGroupRepository
+        public: true
+
+    App\Modules\Party\Domain\Repository\PartyAccountGroupMembershipRepositoryInterface:
+        alias: App\Modules\Party\Infrastructure\Persistence\DoctrinePartyAccountGroupMembershipRepository
+        public: true
+
+    App\Modules\Party\Domain\Repository\PartyAccountOrganizationIdentityRepositoryInterface:
+        alias: App\Modules\Party\Infrastructure\Persistence\DoctrinePartyAccountOrganizationIdentityRepository
+        public: true
+
+    App\Modules\Party\Domain\Repository\PartyAccountOfficeRepositoryInterface:
+        alias: App\Modules\Party\Infrastructure\Persistence\DoctrinePartyAccountOfficeRepository
+        public: true
+
+    App\Modules\Core\Domain\Repository\CoreCredentialRepositoryInterface:
+        alias: App\Modules\Core\Infrastructure\Persistence\DoctrineCoreCredentialRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingFolderRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingFolderRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingAccommodationDetailRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingAccommodationDetailRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingHotelRoomRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingHotelRoomRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingTravelerRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingTravelerRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingTransportSegmentRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingTransportSegmentRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingCarRentalDetailRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingCarRentalDetailRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingCancellationPolicyRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingCancellationPolicyRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingCancellationTierRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingCancellationTierRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingChargeRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingChargeRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingSettlementRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingSettlementRepository
+        public: true
+
+    App\Modules\Booking\Domain\Repository\BookingPayerSplitRepositoryInterface:
+        alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingPayerSplitRepository
+        public: true
+
+    App\Modules\Reglements\Domain\Repository\ReglementPaymentMethodRepositoryInterface:
+        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementPaymentMethodRepository
+        public: true
+
+    App\Modules\Reglements\Domain\Repository\ReglementEntryTypeRepositoryInterface:
+        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementEntryTypeRepository
+        public: true
+
+    App\Modules\Reglements\Domain\Repository\ReglementInstrumentRepositoryInterface:
+        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementInstrumentRepository
+        public: true
+
+    App\Modules\Reglements\Domain\Repository\ReglementLedgerEntryRepositoryInterface:
+        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementLedgerEntryRepository
+        public: true
+
+    App\Modules\Reglements\Domain\Repository\ReglementMatchingRepositoryInterface:
+        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementMatchingRepository
+        public: true
+
+    App\Modules\Reglements\Domain\Repository\ReglementBalanceRepositoryInterface:
+        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementBalanceRepository
+        public: true
+
+    App\Modules\Core\Domain\Security\PasswordHasherInterface:
+        alias: App\Modules\Core\Infrastructure\Security\SymfonyPasswordHasher
+        public: true
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Extension 1-1 : PK = account_id (aussi FK vers party_account).
+      strategy NONE = identifiant assigné par l'application (pas de générateur).
+      Colonnes non mappées : country_id, created_at, updated_at, created_by, updated_by.
+      default_currency_code : string brut (pas de VO — Domain ref_currency pas encore construit).
+    -->
+    <entity name="App\Modules\Party\Domain\Entity\PartyAccountOffice"
+            table="party_account_office">
+        <id name="accountId" type="bigint" column="account_id">
+            <generator strategy="NONE"/>
+        </id>
+
+        <field name="officeCode" type="string" column="office_code" length="20" nullable="false"/>
+        <field name="defaultCurrencyCode" type="string" column="default_currency_code" length="3" nullable="false"/>
+    </entity>
+</doctrine-mapping>

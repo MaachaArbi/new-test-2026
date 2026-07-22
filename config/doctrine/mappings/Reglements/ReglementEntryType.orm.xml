@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Référentiel seedé — lecture seule Application.
+      Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Reglements\Domain\Entity\ReglementEntryType" table="reglement_entry_type">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="publicId" type="public_id" column="public_id" unique="true" nullable="false"/>
+        <field name="code" type="string" column="code" length="30" unique="true" nullable="false"/>
+        <field name="label" type="string" column="label" length="80" nullable="false"/>
+        <field name="normalSign" type="smallint" column="normal_sign" nullable="false"/>
+    </entity>
+</doctrine-mapping>

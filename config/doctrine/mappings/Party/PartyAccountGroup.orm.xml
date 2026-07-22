@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Mapping party_account_group. Colonnes non mappées : created_at, updated_at.
+      Instantiation via reflection (constructeur privé Domain).
+    -->
+    <entity name="App\Modules\Party\Domain\Entity\PartyAccountGroup" table="party_account_group">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="publicId" type="public_id" column="public_id" unique="true" nullable="false"/>
+        <field name="groupTypeCode" type="party_account_group_type_code" column="group_type_code" length="30" nullable="false"/>
+        <field name="name" type="string" column="name" length="150" nullable="false"/>
+    </entity>
+</doctrine-mapping>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Scope Domain Booking (pivot + montants/devises + workflow flags).
+      PK composite (id, booking_date) — alignée PostgreSQL PARTITION BY RANGE.
+      Money : montants BIGINT + codes devise VARCHAR mappés séparément ;
+      reconstruction Money dans les getters Domain (pas de Type composite).
+      Instantiation via reflection (constructeur privé Domain) — pas de setters.
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\Booking" table="booking">
+        <!--
+          Pas de generator IDENTITY : Doctrine MappingException
+          "Single id is not allowed on composite primary key".
+          L'id est pré-assigné via nextval dans DoctrineBookingRepository.
+        -->
+        <id name="id" type="bigint" column="id"/>
+        <!-- string Y-m-d : DateTimeImmutable interdit en PK composite Doctrine (UnitOfWork id hash) -->
+        <id name="bookingDate" type="string" column="booking_date" length="10"/>
+
+        <field name="publicId" type="public_id" column="public_id" nullable="false"/>
+        <field name="folderId" type="bigint" column="folder_id" nullable="false"/>
+        <field name="serviceTypeCode" type="booking_service_type_code" column="service_type_code" length="30" nullable="false"/>
+        <field name="statusCode" type="booking_status_code" column="status_code" length="30" nullable="false"/>
+        <field name="customerAccountId" type="bigint" column="customer_account_id" nullable="false"/>
+        <field name="supplierAccountId" type="bigint" column="supplier_account_id" nullable="true"/>
+        <field name="officeAccountId" type="bigint" column="office_account_id" nullable="false"/>
+        <field name="startDate" type="date_immutable" column="start_date" nullable="false"/>
+        <field name="endDate" type="date_immutable" column="end_date" nullable="true"/>
+        <field name="channelCode" type="booking_channel_code" column="channel_code" length="30" nullable="false"/>
+
+        <field name="achatCurrencyCode" type="string" column="achat_currency_code" length="3" nullable="false"/>
+        <field name="venteCurrencyCode" type="string" column="vente_currency_code" length="3" nullable="false"/>
+        <field name="achatExchangeRate" type="exchange_rate" column="achat_exchange_rate" precision="14" scale="6" nullable="false"/>
+        <field name="venteExchangeRate" type="exchange_rate" column="vente_exchange_rate" precision="14" scale="6" nullable="false"/>
+        <field name="totalAchatAmount" type="bigint" column="total_achat_amount" nullable="false"/>
+        <field name="totalVenteAmount" type="bigint" column="total_vente_amount" nullable="false"/>
+        <field name="margeAgenceAmount" type="bigint" column="marge_agence_amount" nullable="false"/>
+        <field name="margeDistributeurAmount" type="bigint" column="marge_distributeur_amount" nullable="false"/>
+        <field name="paidAmount" type="bigint" column="paid_amount" nullable="false"/>
+        <field name="paymentStatus"
+                enum-type="App\Modules\Booking\Domain\ValueObject\PaymentStatus"
+                column="payment_status"
+                length="20"
+                nullable="false"/>
+
+        <field name="isOnRequest" type="boolean" column="is_on_request" nullable="false"/>
+        <field name="assignedAgentAccountId" type="bigint" column="assigned_agent_account_id" nullable="true"/>
+        <field name="assignedAt" type="datetimetz_immutable" column="assigned_at" nullable="true"/>
+        <field name="isLocked" type="boolean" column="is_locked" nullable="false"/>
+        <field name="isDisputed" type="boolean" column="is_disputed" nullable="false"/>
+        <field name="supplierStatusLabel" type="string" column="supplier_status_label" length="100" nullable="true"/>
+    </entity>
+</doctrine-mapping>

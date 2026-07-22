@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Mapping party_account_group_member. Colonnes non mappées : created_at.
+      Instantiation via reflection (constructeur privé Domain).
+      Unicité active : (account_id, group_id).
+    -->
+    <entity name="App\Modules\Party\Domain\Entity\PartyAccountGroupMembership" table="party_account_group_member">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="accountId" type="bigint" column="account_id" nullable="false"/>
+        <field name="groupId" type="bigint" column="group_id" nullable="false"/>
+        <field name="openedAt" type="datetimetz_immutable" column="valid_from" nullable="false"/>
+        <field name="closedAt" type="datetimetz_immutable" column="valid_to" nullable="true"/>
+        <field name="actorId" type="bigint" column="created_by" nullable="true"/>
+    </entity>
+</doctrine-mapping>

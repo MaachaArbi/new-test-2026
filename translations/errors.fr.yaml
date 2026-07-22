@@ -1,0 +1,62 @@
+# Domain Symfony « errors » — messages système (jamais mélangés avec « messages » UI).
+# Clés = DomainException::errorCode() exacts.
+
+email.invalid_format: "Format d'email invalide."
+money.currency_mismatch: "Les devises des montants ne correspondent pas."
+money.invalid_currency_code: "Code devise invalide."
+exchange_rate.invalid_format: "Format de taux de change invalide."
+party_account.parent_account_not_allowed_for_person: "Un compte personne ne peut pas avoir de compte parent."
+party_account.not_found: "Compte party introuvable."
+party_account.no_changes_provided: "Aucune modification fournie."
+party_account_role.assignment_not_found: "Assignation de rôle introuvable."
+party_account_function.assignment_not_found: "Assignation de fonction introuvable."
+party_account_group_member.membership_not_found: "Appartenance au groupe introuvable."
+core_credential.oauth_provider_cannot_be_local: "Un credential OAuth ne peut pas utiliser le provider local."
+booking_folder.reference_code_already_used: "Le code de référence du dossier est déjà utilisé."
+booking.invalid_dates: "La date de fin doit être postérieure ou égale à la date de début."
+booking.not_found: "Réservation introuvable."
+booking.no_changes_provided: "Aucune modification fournie."
+booking.status_unchanged: "La réservation est déjà dans ce statut."
+booking.service_type_mismatch: "Le type de service de la réservation ne correspond pas."
+booking_traveler.pax_leader_already_set: "Un voyageur chef de file est déjà défini pour cette réservation."
+booking_transport_segment.invalid_dates: "L'heure d'arrivée doit être postérieure ou égale à l'heure de départ."
+booking_car_rental_detail.invalid_dates: "L'heure de restitution doit être postérieure ou égale à l'heure de prise en charge."
+booking_cancellation_tier.invalid_penalty: 'La pénalité du palier d''annulation est invalide.'
+booking_cancellation_policy.not_found: 'Politique d''annulation introuvable.'
+booking_cancellation_policy.already_exists: 'Une politique d''annulation existe déjà pour ce périmètre.'
+booking_cancellation_policy.room_mismatch: 'La chambre n''appartient pas à cette réservation.'
+booking.unknown_service_type: 'Type de service de réservation inconnu.'
+booking.unknown_status: 'Statut de réservation inconnu.'
+booking.unknown_channel: 'Canal de réservation inconnu.'
+booking.unknown_currency: 'Code devise inconnu.'
+booking.unknown_charge_type: 'Type de charge de réservation inconnu.'
+booking_charge.traveler_mismatch: 'Le voyageur n''appartient pas à cette réservation.'
+booking_charge.segment_mismatch: 'Le tronçon de transport n''appartient pas à cette réservation.'
+booking_settlement.already_active: 'Un settlement actif existe déjà pour ce triplet bénéficiaire.'
+booking_settlement.not_found: 'Settlement de réservation introuvable.'
+booking_settlement.invalid: 'Settlement de réservation invalide.'
+booking_settlement.invalid_rate: 'Format de taux de settlement invalide.'
+booking_payer_split.exceeds_total: 'Le split payeur dépasserait le total vente de la réservation.'
+booking_payer_split.currency_mismatch: 'La devise du split payeur ne correspond pas à la devise vente.'
+booking_payer_split.not_found: 'Split payeur introuvable.'
+booking_payer_split.invalid: 'Split payeur invalide.'
+booking_payer_split.already_active: 'Un split payeur actif existe déjà pour ce booking et ce payeur.'
+reglement_instrument.invalid_amount: 'Le montant de l''instrument doit être strictement positif.'
+reglement_instrument.not_found: 'Instrument de règlement introuvable.'
+reglement_instrument.status_unchanged: 'L''instrument est déjà dans ce statut.'
+reglement_payment_method.inactive_or_unknown: 'Mode de règlement inconnu ou inactif.'
+reglement.unknown_currency: 'Code devise inconnu.'
+reglement_ledger_entry.invalid: 'Écriture du grand livre invalide.'
+reglement_entry_type.not_found: 'Type d''écriture de règlement introuvable.'
+reglement_transfer.invalid_amount: 'Le montant du transfert doit être strictement positif.'
+reglement_transfer.invalid_party_role: 'Rôle de tiers invalide pour le transfert.'
+reglement_transfer.posting_failed: 'Échec du posting du transfert de solde.'
+reglement_instrument.invalid_party_role: 'Rôle de tiers invalide pour l''instrument.'
+reglement_instrument.invalid_status: 'Statut d''instrument invalide.'
+reglement_instrument.not_active: 'L''instrument n''est pas actif.'
+reglement_ledger_entry.not_found: 'Écriture du grand livre introuvable.'
+reglement_matching.invalid: 'Lettrage invalide.'
+reglement_matching.not_found: 'Lettrage introuvable.'
+reglement_matching.book_mismatch: 'Les écritures lettrées doivent appartenir au même livre.'
+reglement_matching.exceeds_credit: 'Le lettrage dépasserait le montant restant de l''écriture de crédit.'
+reglement_matching.exceeds_debit: 'Le lettrage dépasserait le montant restant de l''écriture de débit.'

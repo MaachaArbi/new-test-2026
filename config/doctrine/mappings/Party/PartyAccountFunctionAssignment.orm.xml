@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Mapping party_account_function. Colonnes non mappées (défauts DB) : created_at.
+      Instantiation via reflection (constructeur privé Domain).
+      Unicité active : (person_account_id, function_code, organization_account_id).
+    -->
+    <entity name="App\Modules\Party\Domain\Entity\PartyAccountFunctionAssignment" table="party_account_function">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="personAccountId" type="bigint" column="person_account_id" nullable="false"/>
+        <field name="organizationAccountId" type="bigint" column="organization_account_id" nullable="false"/>
+        <field name="functionCode" type="party_function_code" column="function_code" length="30" nullable="false"/>
+        <field name="validFrom" type="datetimetz_immutable" column="valid_from" nullable="false"/>
+        <field name="validTo" type="datetimetz_immutable" column="valid_to" nullable="true"/>
+        <field name="createdBy" type="bigint" column="created_by" nullable="true"/>
+    </entity>
+</doctrine-mapping>

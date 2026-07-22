@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      booking_settlement — historisé (valid_from / valid_to).
+      Money : montants BIGINT + currency_code ; reconstruction getters Domain.
+      rate : SettlementRate / NUMERIC(6,3).
+      Colonnes non mappées : created_at.
+      Aucun lien ORM vers Booking (pas de cascade / pas de recalcul).
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingSettlement" table="booking_settlement">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="bookingId" type="bigint" column="booking_id" nullable="false"/>
+        <field name="beneficiaryAccountId" type="bigint" column="beneficiary_account_id" nullable="false"/>
+        <field name="beneficiaryRole"
+                enum-type="App\Modules\Booking\Domain\ValueObject\BeneficiaryRole"
+                column="beneficiary_role"
+                length="30"
+                nullable="false"/>
+        <field name="amountOwed" type="bigint" column="amount_owed" nullable="false"/>
+        <field name="amountSettledDirect" type="bigint" column="amount_settled_direct" nullable="false"/>
+        <field name="rate" type="settlement_rate" column="rate" precision="6" scale="3" nullable="true"/>
+        <field name="resalePriceAmount" type="bigint" column="resale_price_amount" nullable="true"/>
+        <field name="currencyCode" type="string" column="currency_code" length="3" nullable="false"/>
+        <field name="validFrom" type="datetimetz_immutable" column="valid_from" nullable="false"/>
+        <field name="validTo" type="datetimetz_immutable" column="valid_to" nullable="true"/>
+        <field name="createdBy" type="bigint" column="created_by" nullable="true"/>
+    </entity>
+</doctrine-mapping>

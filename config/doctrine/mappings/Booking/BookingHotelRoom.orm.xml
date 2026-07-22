@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Collection 1-N chambres hôtel. PK IDENTITY simple (table non partitionnée).
+      booking_id : bigint applicatif (pas de FK SQL / association Doctrine).
+      Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingHotelRoom" table="booking_hotel_room">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="bookingId" type="bigint" column="booking_id" nullable="false"/>
+        <field name="roomType" type="string" column="room_type" length="100" nullable="true"/>
+    </entity>
+</doctrine-mapping>

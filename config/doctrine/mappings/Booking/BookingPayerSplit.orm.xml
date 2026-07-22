@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      booking_payer_split — historisé (valid_from / valid_to).
+      Devise vente = absente du schéma → hydrateCurrency() en Repository.
+      Colonnes non mappées : created_at.
+      Aucun lien ORM / cascade vers Booking.
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingPayerSplit" table="booking_payer_split">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="bookingId" type="bigint" column="booking_id" nullable="false"/>
+        <field name="payerAccountId" type="bigint" column="payer_account_id" nullable="false"/>
+        <field name="amount" type="bigint" column="amount" nullable="false"/>
+        <field name="validFrom" type="datetimetz_immutable" column="valid_from" nullable="false"/>
+        <field name="validTo" type="datetimetz_immutable" column="valid_to" nullable="true"/>
+        <field name="createdBy" type="bigint" column="created_by" nullable="true"/>
+    </entity>
+</doctrine-mapping>

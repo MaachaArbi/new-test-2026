@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Tronçons transport 1-N — table non partitionnée, PK IDENTITY.
+      booking_id : bigint applicatif. Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingTransportSegment"
+            table="booking_transport_segment">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="bookingId" type="bigint" column="booking_id" nullable="false"/>
+        <field name="sequenceNumber" type="smallint" column="sequence_number" nullable="false"/>
+        <field name="carrierCode" type="string" column="carrier_code" length="50" nullable="true"/>
+        <field name="departureAt" type="datetimetz_immutable" column="departure_at" nullable="false"/>
+        <field name="arrivalAt" type="datetimetz_immutable" column="arrival_at" nullable="false"/>
+        <field name="departureLocation" type="string" column="departure_location" length="100" nullable="true"/>
+        <field name="arrivalLocation" type="string" column="arrival_location" length="100" nullable="true"/>
+    </entity>
+</doctrine-mapping>

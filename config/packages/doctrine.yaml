@@ -1,0 +1,72 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+        profiling_collect_backtrace: '%kernel.debug%'
+        types:
+            public_id: App\Shared\Infrastructure\Doctrine\Type\PublicIdType
+            email: App\Shared\Infrastructure\Doctrine\Type\EmailType
+            exchange_rate: App\Shared\Infrastructure\Doctrine\Type\ExchangeRateType
+            settlement_rate: App\Modules\Booking\Infrastructure\Doctrine\Type\SettlementRateType
+            party_role_code: App\Modules\Party\Infrastructure\Doctrine\Type\PartyRoleCodeType
+            party_function_code: App\Modules\Party\Infrastructure\Doctrine\Type\PartyFunctionCodeType
+            party_account_group_type_code: App\Modules\Party\Infrastructure\Doctrine\Type\PartyAccountGroupTypeCodeType
+            booking_service_type_code: App\Modules\Booking\Infrastructure\Doctrine\Type\BookingServiceTypeCodeType
+            booking_status_code: App\Modules\Booking\Infrastructure\Doctrine\Type\BookingStatusCodeType
+            booking_channel_code: App\Modules\Booking\Infrastructure\Doctrine\Type\BookingChannelCodeType
+    orm:
+        validate_xml_mapping: true
+        naming_strategy: doctrine.orm.naming_strategy.underscore
+        identity_generation_preferences:
+            Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
+        auto_mapping: false
+        mappings:
+            # Pattern module : dir dédié sous config/doctrine/mappings/{Module}/
+            # + prefix App\Modules\{Module}\Domain\Entity (un dir partagé casse
+            # le SimplifiedXmlDriver : préfixe croisé entre modules).
+            # Source canonique PartyAccount : config/doctrine/Party.PartyAccount.orm.xml
+            # (hardlink → mappings/Party/PartyAccount.orm.xml).
+            Party:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/config/doctrine/mappings/Party'
+                prefix: 'App\Modules\Party\Domain\Entity'
+                alias: Party
+            Core:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/config/doctrine/mappings/Core'
+                prefix: 'App\Modules\Core\Domain\Entity'
+                alias: Core
+            Booking:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/config/doctrine/mappings/Booking'
+                prefix: 'App\Modules\Booking\Domain\Entity'
+                alias: Booking
+            Reglements:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/config/doctrine/mappings/Reglements'
+                prefix: 'App\Modules\Reglements\Domain\Entity'
+                alias: Reglements
+
+# Tests d'intégration : PostgreSQL réel via DATABASE_URL (.env.test → 127.0.0.1:5432).
+# Pas de SQLite. Pas de dbname_suffix automatique.
+
+when@prod:
+    doctrine:
+        orm:
+            query_cache_driver:
+                type: pool
+                pool: doctrine.system_cache_pool
+            result_cache_driver:
+                type: pool
+                pool: doctrine.result_cache_pool
+
+    framework:
+        cache:
+            pools:
+                doctrine.result_cache_pool:
+                    adapter: cache.app
+                doctrine.system_cache_pool:
+                    adapter: cache.system

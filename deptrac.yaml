@@ -1,0 +1,82 @@
+deptrac:
+  paths:
+    - ./src
+  exclude_files:
+    - '#.*test.*#'
+  layers:
+    - name: SharedDomain
+      collectors:
+        - type: directory
+          value: src/Shared/Domain/.*
+    - name: ModuleDomain
+      collectors:
+        - type: directory
+          value: src/Modules/.*/Domain/.*
+    - name: Application
+      collectors:
+        - type: directory
+          value: src/Shared/Application/.*
+        - type: directory
+          value: src/Modules/.*/Application/.*
+    - name: UnitOfWork
+      collectors:
+        - type: classNameRegex
+          value: '#^App\\\\Shared\\\\Infrastructure\\\\Persistence\\\\UnitOfWork$#'
+    - name: Infrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: src/Shared/Infrastructure/.*
+          must_not:
+            - type: directory
+              value: src/Shared/Infrastructure/Persistence/UnitOfWork\.php
+        - type: directory
+          value: src/Modules/.*/Infrastructure/.*
+    - name: Symfony
+      collectors:
+        - type: classNameRegex
+          value: '#^Symfony\\\\#'
+    - name: DoctrineEntityManager
+      collectors:
+        - type: classNameRegex
+          value: '#^Doctrine\\\\ORM\\\\EntityManager(Interface)?$#'
+    - name: Doctrine
+      collectors:
+        - type: bool
+          must:
+            - type: classNameRegex
+              value: '#^Doctrine\\\\#'
+          must_not:
+            - type: classNameRegex
+              value: '#^Doctrine\\\\ORM\\\\EntityManager(Interface)?$#'
+    - name: Monolog
+      collectors:
+        - type: classNameRegex
+          value: '#^Monolog\\\\#'
+    - name: Lexik
+      collectors:
+        - type: classNameRegex
+          value: '#^Lexik\\\\#'
+  ruleset:
+    SharedDomain: ~
+    ModuleDomain:
+      - SharedDomain
+    Application:
+      - SharedDomain
+      - ModuleDomain
+      # ADR-003 : Query handlers (lecture) utilisent DBAL Connection directement.
+      - Doctrine
+      # Single-flush : commit() en fin d'Handler.
+      - UnitOfWork
+    UnitOfWork:
+      - DoctrineEntityManager
+    Infrastructure:
+      - SharedDomain
+      - ModuleDomain
+      - Application
+      - UnitOfWork
+      - Symfony
+      - Doctrine
+      - Monolog
+      - Lexik

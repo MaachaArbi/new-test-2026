@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Grand livre append-only. Domain : aucune mutation après post().
+      Repository : append() = persist INSERT only.
+      Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Reglements\Domain\Entity\ReglementLedgerEntry" table="reglement_ledger_entry">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="publicId" type="public_id" column="public_id" unique="true" nullable="false"/>
+        <field name="partyAccountId" type="bigint" column="party_account_id" nullable="false"/>
+        <field name="partyRole"
+                enum-type="App\Modules\Reglements\Domain\ValueObject\InstrumentPartyRole"
+                column="party_role"
+                length="20"
+                nullable="false"/>
+        <field name="currencyCode" type="string" column="currency_code" length="3" nullable="false"/>
+        <field name="entryTypeId" type="bigint" column="entry_type_id" nullable="false"/>
+        <field name="amountMinor" type="bigint" column="amount_minor" nullable="false"/>
+        <field name="effectiveDate" type="date_immutable" column="effective_date" nullable="false"/>
+        <field name="bookingId" type="bigint" column="booking_id" nullable="true"/>
+        <field name="instrumentId" type="bigint" column="instrument_id" nullable="true"/>
+        <field name="invoiceId" type="bigint" column="invoice_id" nullable="true"/>
+        <field name="creditNoteId" type="bigint" column="credit_note_id" nullable="true"/>
+        <field name="transferId" type="bigint" column="transfer_id" nullable="true"/>
+        <field name="reversesEntryId" type="bigint" column="reverses_entry_id" nullable="true"/>
+        <field name="memo" type="text" column="memo" nullable="true"/>
+        <field name="createdBy" type="bigint" column="created_by" nullable="true"/>
+    </entity>
+</doctrine-mapping>

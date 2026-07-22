@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Extension 1-1 : PK = booking_id (FK applicative vers booking.id).
+      strategy NONE = identifiant assigné par l'application.
+      Colonnes non mappées : created_at, updated_at.
+      Pas d'association Doctrine vers Booking (partitionnement — FK applicative).
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingAccommodationDetail"
+            table="booking_accommodation_detail">
+        <id name="bookingId" type="bigint" column="booking_id">
+            <generator strategy="NONE"/>
+        </id>
+
+        <field name="accommodationId" type="bigint" column="accommodation_id" nullable="true"/>
+        <field name="accommodationNameSnapshot" type="string" column="accommodation_name_snapshot" length="255" nullable="true"/>
+        <field name="boardType" type="string" column="board_type" length="50" nullable="true"/>
+    </entity>
+</doctrine-mapping>

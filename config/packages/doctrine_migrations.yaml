@@ -1,0 +1,6 @@
+doctrine_migrations:
+    migrations_paths:
+        # Classes de migration = wrappers autour du SQL déjà écrit à la main.
+        # INTERDICTION d'utiliser doctrine:migrations:diff ou doctrine:schema:update.
+        'DoctrineMigrations': '%kernel.project_dir%/migrations'
+    enable_profiler: false

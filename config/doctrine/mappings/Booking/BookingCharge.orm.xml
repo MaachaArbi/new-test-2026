@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Ligne booking_charge — PK IDENTITY.
+      Devises non stockées (héritées du booking) — hydrateCurrencies() en Repository.
+      Money : montants BIGINT mappés ; reconstruction dans les getters Domain.
+      Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingCharge" table="booking_charge">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="bookingId" type="bigint" column="booking_id" nullable="false"/>
+        <field name="travelerId" type="bigint" column="traveler_id" nullable="true"/>
+        <field name="segmentId" type="bigint" column="segment_id" nullable="true"/>
+        <field name="chargeTypeCode" type="string" column="charge_type_code" length="30" nullable="false"/>
+        <field name="label" type="string" column="label" length="255" nullable="true"/>
+        <field name="metadata" type="json" column="metadata" nullable="false"/>
+        <field name="achatAmount" type="bigint" column="achat_amount" nullable="false"/>
+        <field name="venteAmount" type="bigint" column="vente_amount" nullable="false"/>
+        <field name="sortOrder" type="smallint" column="sort_order" nullable="false"/>
+    </entity>
+</doctrine-mapping>

@@ -1,0 +1,18 @@
+parameters:
+    level: 9
+    paths:
+        - src
+        - tests
+    tmpDir: var/phpstan
+
+includes:
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-symfony/rules.neon
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+    - vendor/phpstan/phpstan-doctrine/rules.neon
+
+services:
+    -
+        class: App\PHPStan\Rules\NoEntityManagerFlushOutsideUnitOfWorkRule
+        tags:
+            - phpstan.rules.rule

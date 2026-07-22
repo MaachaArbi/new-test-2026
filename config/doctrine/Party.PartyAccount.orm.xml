@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Scope Domain PartyAccount : champs métier + soft-delete deletedAt.
+      Colonnes table non mappées (defaults / nullable PostgreSQL) :
+      phone_primary, phone_secondary, country_id, logo_url,
+      created_at, updated_at, created_by, updated_by.
+      Instantiation via reflection (constructeur privé Domain) — pas de setters.
+    -->
+    <entity name="App\Modules\Party\Domain\Entity\PartyAccount" table="party_account">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="publicId" type="public_id" column="public_id" unique="true" nullable="false"/>
+        <field name="nature"
+                enum-type="App\Modules\Party\Domain\ValueObject\PartyAccountNature"
+                column="nature"
+                length="20"
+                nullable="false"/>
+        <field name="displayName" type="string" column="display_name" length="255" nullable="false"/>
+        <field name="email" type="email" column="email" length="255" nullable="true"/>
+        <field name="parentAccountId" type="bigint" column="parent_account_id" nullable="true"/>
+        <field name="isDisabled" type="boolean" column="is_disabled" nullable="false"/>
+        <field name="isProspect" type="boolean" column="is_prospect" nullable="false"/>
+        <field name="isDisputed" type="boolean" column="is_disputed" nullable="false"/>
+        <field name="deletedAt" type="datetimetz_immutable" column="deleted_at" nullable="true"/>
+    </entity>
+</doctrine-mapping>

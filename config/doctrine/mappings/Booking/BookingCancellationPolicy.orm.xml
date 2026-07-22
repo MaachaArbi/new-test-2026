@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Barème d'annulation. PK IDENTITY (table non partitionnée).
+      booking_id : bigint applicatif (booking partitionné).
+      room_id : bigint simple (FK SQL réelle possible vers booking_hotel_room,
+      pas d'association Doctrine — cohérence room↔booking en Application).
+      Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Booking\Domain\Entity\BookingCancellationPolicy"
+            table="booking_cancellation_policy">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="bookingId" type="bigint" column="booking_id" nullable="false"/>
+        <field name="roomId" type="bigint" column="room_id" nullable="true"/>
+    </entity>
+</doctrine-mapping>

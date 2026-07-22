@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Mapping party_account_role. Colonnes non mappées (défauts DB) : created_at.
+      Instantiation via reflection (constructeur privé Domain).
+    -->
+    <entity name="App\Modules\Party\Domain\Entity\PartyAccountRoleAssignment" table="party_account_role">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="accountId" type="bigint" column="account_id" nullable="false"/>
+        <field name="roleCode" type="party_role_code" column="role_code" length="30" nullable="false"/>
+        <field name="validFrom" type="datetimetz_immutable" column="valid_from" nullable="false"/>
+        <field name="validTo" type="datetimetz_immutable" column="valid_to" nullable="true"/>
+        <field name="createdBy" type="bigint" column="created_by" nullable="true"/>
+    </entity>
+</doctrine-mapping>
