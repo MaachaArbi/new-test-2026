@@ -1,0 +1,81 @@
+--- a/schema-ref-static-v1.sql
++++ b/schema-ref-static-v1.sql
+@@ (additif pur -- aucune ligne existante modifiée ou supprimée)
++-- ============================================================
++-- Réouverture ponctuelle documentée (18/07/2026), justifiée par la
++-- session Product/Catalogue : fermeture du point ouvert #112 laissé
++-- par ref_static V1.0 ("toutes les liaisons ref_accommodation <->
++-- vocabulaire"). Additif pur, ref_accommodation elle-même non touchée.
++--
++-- Périmètre retenu (décision explicite en session) : on relie
++-- UNIQUEMENT les référentiels déjà existants dans ref_static --
++-- amenity, option, location_type, tag (= "Services" dans le
++-- vocabulaire métier de l'utilisateur). "Thèmes" (ost_sht_hotels_themes
++-- en legacy) n'a PAS de référentiel ref_static et n'est volontairement
++-- PAS créé : décision explicite de ne pas ajouter de nouvelle entité,
++-- cohérente avec le principe acté par ailleurs qu'un "thème" (Famille,
++-- Romantique...) est un classement marketing web, migré vers le futur
++-- CMS, hors périmètre MyGo -- pas un champ métier ou un critère de
++-- recherche technique. Abandon documenté, pas un oubli.
++-- ============================================================
++
++CREATE TABLE ref_accommodation_amenity (
++    accommodation_id  BIGINT NOT NULL REFERENCES ref_accommodation(id),
++    amenity_id        BIGINT NOT NULL REFERENCES ref_amenity(id),
++    PRIMARY KEY (accommodation_id, amenity_id)
++);
++
++COMMENT ON TABLE ref_accommodation_amenity IS 'Aménagements physiques de l''hôtel entier (WiFi, piscine, salon de coiffure...). Pur lien descriptif booléen -- ferme le point ouvert #112. Distinct de product_accommodation_room_amenity (module Product/Catalogue), qui relie le même référentiel ref_amenity à une CHAMBRE précise (contenu commercial, pas descriptif).';
++
++CREATE INDEX idx_ref_accommodation_amenity_accommodation ON ref_accommodation_amenity(accommodation_id);
++CREATE INDEX idx_ref_accommodation_amenity_amenity ON ref_accommodation_amenity(amenity_id);
++
++-- ------------------------------------------------------------
++CREATE TABLE ref_accommodation_option (
++    accommodation_id  BIGINT NOT NULL REFERENCES ref_accommodation(id),
++    option_id         BIGINT NOT NULL REFERENCES ref_option(id),
++    PRIMARY KEY (accommodation_id, option_id)
++);
++
++COMMENT ON TABLE ref_accommodation_option IS 'Souhaits/demandes gratuites disponibles à cet hôtel (arrivée tardive si possible, chambres communicantes...). Pur lien descriptif.';
++
++CREATE INDEX idx_ref_accommodation_option_accommodation ON ref_accommodation_option(accommodation_id);
++CREATE INDEX idx_ref_accommodation_option_option ON ref_accommodation_option(option_id);
++
++-- ------------------------------------------------------------
++CREATE TABLE ref_accommodation_location_type_link (
++    accommodation_id  BIGINT NOT NULL REFERENCES ref_accommodation(id),
++    location_type_id  BIGINT NOT NULL REFERENCES ref_accommodation_location_type(id),
++    PRIMARY KEY (accommodation_id, location_type_id)
++);
++
++COMMENT ON TABLE ref_accommodation_location_type_link IS 'Implantation de l''hôtel (Centre-ville/Bord de mer/Palmeraie...). Nommage _link pour éviter la collision avec ref_accommodation_location_type (le référentiel lui-même). Pur lien descriptif -- en pratique souvent 0 ou 1 ligne, mais N-N gardé par cohérence avec les autres liaisons.';
++
++CREATE INDEX idx_ref_accommodation_loctype_accommodation ON ref_accommodation_location_type_link(accommodation_id);
++CREATE INDEX idx_ref_accommodation_loctype_type ON ref_accommodation_location_type_link(location_type_id);
++
++-- ------------------------------------------------------------
++CREATE TABLE ref_accommodation_tag (
++    accommodation_id  BIGINT NOT NULL REFERENCES ref_accommodation(id),
++    tag_id             BIGINT NOT NULL REFERENCES ref_tag(id),
++    PRIMARY KEY (accommodation_id, tag_id)
++);
++
++COMMENT ON TABLE ref_accommodation_tag IS 'Tags de vente / "Services" (vocabulaire métier utilisateur) de l''hôtel. Pur lien descriptif.';
++
++CREATE INDEX idx_ref_accommodation_tag_accommodation ON ref_accommodation_tag(accommodation_id);
++CREATE INDEX idx_ref_accommodation_tag_tag ON ref_accommodation_tag(tag_id);
++
++-- ============================================================
++-- ref_accommodation_translation : description courte traduisible de
++-- l'hôtel entier. Décidée en session Product/Catalogue (18/07/2026),
++-- explicitement au niveau hôtel (pas chambre/pension). Additive pure.
++-- ============================================================
++CREATE TABLE ref_accommodation_translation (
++    accommodation_id   BIGINT NOT NULL REFERENCES ref_accommodation(id),
++    language_code       VARCHAR(5) NOT NULL REFERENCES ref_language(code),
++    short_description    TEXT,
++    PRIMARY KEY (accommodation_id, language_code)
++);
++
++COMMENT ON TABLE ref_accommodation_translation IS 'Description courte traduisible de l''hôtel entier (FR/EN/AR). Nullable. Ajoutée en réouverture ponctuelle documentée, additive pure sur ref_accommodation.';

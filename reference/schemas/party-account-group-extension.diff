@@ -1,0 +1,90 @@
+--- a/schema-party-account-v1.sql
++++ b/schema-party-account-v1.sql
+@@ (additif pur -- aucune ligne existante modifiée ou supprimée)
++-- ============================================================
++-- Réouverture ponctuelle documentée (19/07/2026), justifiée par la
++-- session Pricing : ferme le point 4 de sujets-reportes.md
++-- ("party_account_group — tags/segmentation commerciale"), resté en
++-- implémentation reportée depuis la conception initiale de Party
++-- (14/07/2026). Additif pur, party_account elle-même non touchée.
++--
++-- Origine du déclenchement : le moteur de marge (Pricing) a besoin de
++-- cibler des groupes d'affiliés partageant les mêmes règles (ex:
++-- "Groupe Amicale 1", "Top Partners", "Gros compte", "Petits comptes").
++-- Ce concept avait déjà été identifié et nommé dans la conception
++-- initiale de Party, jamais implémenté -- Pricing en a besoin
++-- maintenant, donc on ferme le point ici plutôt que de construire un
++-- concept concurrent propre à Pricing.
++--
++-- Décisions prises en session pour lever les deux inconnues du point 4
++-- ("group_type : une dimension ou plusieurs superposées ?",
++-- "administration des groupes") :
++--   - group_type : PLUSIEURS dimensions superposées dès maintenant
++--     (référentiel party_account_group_type séparé) -- un compte peut
++--     appartenir à des groupes de types différents simultanément (ex:
++--     un groupe "commercial" ET un groupe "zone" en même temps). Aucun
++--     coût si une seule dimension est utilisée en pratique ; évite une
++--     migration lourde si un deuxième axe apparaît plus tard. Seule la
++--     dimension 'commercial' est peuplée dans cette session (besoin
++--     Pricing confirmé) -- les autres dimensions seront ajoutées comme
++--     simples lignes de référentiel, sans migration.
++--   - Historisation : même pattern que party_account_role
++--     (valid_from/valid_to, index partiel sur l'appartenance active) --
++--     pas une simple table N-N sans historique.
++--   - Administration des groupes : reste hors périmètre de cette
++--     réouverture (pas de règle de gouvernance/permission posée ici,
++--     uniquement la structure de données).
++-- ============================================================
++
++CREATE TABLE party_account_group_type (
++    code        VARCHAR(30) PRIMARY KEY,
++    sort_order  SMALLINT NOT NULL DEFAULT 0,
++    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++INSERT INTO party_account_group_type (code, sort_order) VALUES
++    ('commercial', 0);
++
++COMMENT ON TABLE party_account_group_type IS 'Dimensions de regroupement de comptes, superposables (un compte peut appartenir à des groupes de plusieurs types simultanément). Seule la dimension ''commercial'' est peuplée à ce stade (besoin Pricing, session du 19/07/2026) -- extensible par simple ajout de ligne, sans migration.';
++
++-- ------------------------------------------------------------
++CREATE TABLE party_account_group (
++    id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
++    public_id        UUID NOT NULL DEFAULT gen_random_uuid(),
++    group_type_code  VARCHAR(30) NOT NULL REFERENCES party_account_group_type(code),
++    name             VARCHAR(150) NOT NULL, -- nom interne, pas de traduction (usage back-office uniquement)
++    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
++    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE UNIQUE INDEX uq_party_account_group_public_id ON party_account_group(public_id);
++CREATE UNIQUE INDEX uq_party_account_group_type_name ON party_account_group(group_type_code, name);
++
++COMMENT ON TABLE party_account_group IS 'Regroupement de comptes réutilisable (ex: "Groupe Amicale 1", "Top Partners"), scopé par dimension (group_type_code). Ferme le point 4 de sujets-reportes.md. Premier usage : ciblage de règles de marge (Pricing), potentiellement réutilisable pour du reporting/statistiques plus tard.';
++
++CREATE TRIGGER trg_party_account_group_updated_at BEFORE UPDATE ON party_account_group
++    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
++
++-- ------------------------------------------------------------
++-- party_account_group_member : appartenance historisée, même pattern
++-- que party_account_role (valid_from/valid_to, index partiel actif).
++-- Un compte peut appartenir à PLUSIEURS groupes simultanément, y
++-- compris de la même dimension (ex: deux groupes "commercial" en même
++-- temps) -- aucune contrainte d'exclusivité posée, confirmé nécessaire
++-- par l'usage Pricing (un affilié peut être ciblé par plusieurs
++-- groupes à la fois dans une même règle).
++-- ------------------------------------------------------------
++CREATE TABLE party_account_group_member (
++    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
++    account_id  BIGINT NOT NULL REFERENCES party_account(id),
++    group_id    BIGINT NOT NULL REFERENCES party_account_group(id),
++    valid_from  TIMESTAMPTZ NOT NULL DEFAULT now(),
++    valid_to    TIMESTAMPTZ, -- NULL = appartenance active
++    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
++    created_by  BIGINT REFERENCES party_account(id)
++);
++
++COMMENT ON TABLE party_account_group_member IS 'Appartenance compte <-> groupe, historisée (même pattern que party_account_role). Un compte peut appartenir à plusieurs groupes simultanément, y compris de la même dimension.';
++
++CREATE UNIQUE INDEX uq_party_account_group_member_active ON party_account_group_member(account_id, group_id) WHERE valid_to IS NULL;
++CREATE INDEX idx_party_account_group_member_lookup ON party_account_group_member(group_id, account_id) WHERE valid_to IS NULL;

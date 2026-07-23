@@ -230,6 +230,18 @@ CREATE INDEX idx_cash_movement_session ON cash_movement(session_id, currency_cod
 CREATE INDEX idx_cash_movement_instrument ON cash_movement(instrument_id) WHERE instrument_id IS NOT NULL;
 CREATE UNIQUE INDEX uq_cash_movement_public_id ON cash_movement(public_id);
 
+-- Invariant structurel (réouverture 23/07/2026, retour chat Backend) : un même
+-- reglement_instrument ne peut être encaissé deux fois dans LA MÊME session --
+-- jamais légitime (doublon de saisie). Volontairement scopé à session_id : un
+-- même instrument peut réapparaître dans une session DIFFÉRENTE (ex. migration
+-- chèque agent -> caissier central -> banque via cash_validate_session), ce
+-- n'est PAS un doublon, c'est un mouvement de vie légitime -- pas encore
+-- construite côté backend, donc aucune contrainte cross-session ici par
+-- construction (problème ouvert pour la vague cash_validate_session, voir
+-- sujets-reportes.md). Même pattern que uq_cash_session_one_open_per_holder :
+-- invariant porté par la base, pas par l'Application.
+CREATE UNIQUE INDEX uq_cash_movement_instrument_per_session ON cash_movement(session_id, instrument_id) WHERE instrument_id IS NOT NULL;
+
 -- IMMUABILITÉ + verrou de session : bloque toute écriture sur une session non
 -- 'open'. Résout structurellement "annulation sur caisse déjà clôturée".
 CREATE OR REPLACE FUNCTION cash_movement_guard() RETURNS trigger LANGUAGE plpgsql AS $$

@@ -1,0 +1,74 @@
+--- a/schema-ref-static-v1.sql
++++ b/schema-ref-static-v1.sql
+@@ (additif pur -- aucune ligne existante modifiée ou supprimée)
++-- ============================================================
++-- Réouverture ponctuelle documentée (19/07/2026), justifiée par la
++-- session Product/Catalogue (sous-module Aérien). Additif pur, aucune
++-- table existante de schema-ref-static-v1.sql modifiée ou supprimée.
++--
++-- Deux entités, deux régimes différents (décision explicite en
++-- session) :
++--   - ref_cabin_class : classe cabine (Economy/Business...), universelle
++--     et fermée -- "ça doit être dans les static data OctaSoft" (mot de
++--     l'utilisateur). oct_code NOT NULL, même régime que ref_board_type.
++--   - ref_airline_company : compagnie aérienne. Contrairement à
++--     ref_cabin_class, l'AJOUT LOCAL est explicitement PERMIS
++--     (oct_code NULLABLE, régime ref_tag/ref_hotel_chain) -- cohérent
++--     avec le périmètre volontairement réduit du sous-module Aérien
++--     (production ponctuelle de billetterie, hors GDS/OctaSoft, pour
++--     des compagnies que le référentiel central ne couvre pas
++--     forcément).
++-- ============================================================
++
++CREATE TABLE ref_cabin_class (
++    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
++    public_id  UUID NOT NULL DEFAULT gen_random_uuid(),
++    oct_code   VARCHAR(50) NOT NULL,
++    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
++    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE UNIQUE INDEX uq_ref_cabin_class_public_id ON ref_cabin_class(public_id);
++CREATE UNIQUE INDEX uq_ref_cabin_class_oct_code ON ref_cabin_class(oct_code);
++
++COMMENT ON TABLE ref_cabin_class IS 'Classe cabine (Economy/Business/Première...), référentiel unique et fermé, miroir OctaSoft Static Data. Aucun ajout local possible : oct_code NOT NULL -- même régime que ref_board_type. Nom traduit dans ref_cabin_class_translation.';
++
++CREATE TRIGGER trg_ref_cabin_class_updated_at BEFORE UPDATE ON ref_cabin_class
++    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
++
++CREATE TABLE ref_cabin_class_translation (
++    cabin_class_id  BIGINT NOT NULL REFERENCES ref_cabin_class(id),
++    language_code    VARCHAR(5) NOT NULL REFERENCES ref_language(code),
++    name              VARCHAR(100) NOT NULL,
++    PRIMARY KEY (cabin_class_id, language_code)
++);
++
++COMMENT ON TABLE ref_cabin_class_translation IS 'Nom de la classe cabine par langue, fourni par OctaSoft Static Data.';
++
++-- ------------------------------------------------------------
++CREATE TABLE ref_airline_company (
++    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
++    public_id   UUID NOT NULL DEFAULT gen_random_uuid(),
++    oct_code    VARCHAR(50), -- NULLABLE : ajout local permis, contrairement à ref_cabin_class (voir note d'en-tête)
++    iata_code   VARCHAR(3),  -- ex: 'TU' (Tunisair) -- pas toujours connu pour un petit opérateur local
++    icao_code   VARCHAR(4),
++    logo_url    VARCHAR(500),
++    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
++    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE UNIQUE INDEX uq_ref_airline_company_public_id ON ref_airline_company(public_id);
++CREATE UNIQUE INDEX uq_ref_airline_company_oct_code ON ref_airline_company(oct_code) WHERE oct_code IS NOT NULL;
++CREATE UNIQUE INDEX uq_ref_airline_company_iata ON ref_airline_company(iata_code) WHERE iata_code IS NOT NULL;
++
++COMMENT ON TABLE ref_airline_company IS 'Compagnie aérienne. Ajout local permis (oct_code NULLABLE) -- contrairement à ref_cabin_class -- cohérent avec le périmètre Aérien volontairement réduit à la production ponctuelle hors GDS. Nom traduit dans ref_airline_company_translation.';
++
++CREATE TRIGGER trg_ref_airline_company_updated_at BEFORE UPDATE ON ref_airline_company
++    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
++
++CREATE TABLE ref_airline_company_translation (
++    airline_company_id  BIGINT NOT NULL REFERENCES ref_airline_company(id),
++    language_code         VARCHAR(5) NOT NULL REFERENCES ref_language(code),
++    name                    VARCHAR(150) NOT NULL,
++    PRIMARY KEY (airline_company_id, language_code)
++);

@@ -1,0 +1,46 @@
+--- /home/claude/sql/schema-booking-v1.sql.orig	2026-07-20 19:18:52.000000000 +0000
++++ /home/claude/sql/schema-booking-v1.sql	2026-07-20 19:18:52.000000000 +0000
+@@ -892,34 +892,16 @@
+ CREATE INDEX idx_booking_revision_booking ON booking_revision(booking_id);
+ 
+ -- ============================================================
+--- booking_log : log unifié des événements d'une réservation --
+--- remplace hotelNotifier/hotel_notifier_reservation/hotel_notifier_annulation
+--- ET va au-delà : capture aussi création (avec contexte métier : solde
+--- vérifié, marge appliquée), emails (fournisseur ET client), paiement,
+--- fidélité -- conforme à l'écran "Log de la réservation" du legacy,
+--- qui montre un flux unique d'événements, pas des tables séparées par
+--- type. description = texte formaté à l'écriture (lisible tel quel,
+--- comme le legacy) ; metadata = ce qui doit rester structuré/exploitable
+--- (ex: destinataires email, montant, IP) sans sur-typer chaque
+--- variante d'événement en colonnes dédiées.
++-- booking_log SUPPRIMÉE (20/07/2026) -- généralisée en log_activity
++-- (module transverse log_, schema-log-v1.sql), entity_type='booking'.
++-- Comportement préservé à l'identique : event_type/description/metadata/
++-- actor_account_id/ip_address/created_at inchangés, entity_id=booking.id.
++-- status_code_snapshot (ex-colonne dédiée) déplacé dans metadata
++-- ({"status_code_snapshot": "..."}) -- voir sujets-reportes.md §19 et
++-- modele-conceptuel-log.md pour le détail complet de la migration.
++-- schema-log-v1.sql doit être exécuté après schema-party-account-v1.sql
++-- et avant (ou indépendamment de) ce script.
+ -- ============================================================
+-CREATE TABLE booking_log (
+-    id                    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+-    booking_id            BIGINT NOT NULL, -- FK applicative vers booking.id (voir note partitionnement)
+-    event_type            VARCHAR(30) NOT NULL, -- 'created','status_change','notification_supplier','notification_client','payment','loyalty_points',...
+-    description           TEXT NOT NULL,        -- ex: "Création réservation Validée FO par ENERGIE VOYAGES suite chambres disponibles..."
+-    status_code_snapshot  VARCHAR(30) REFERENCES booking_status(code), -- statut du booking AU MOMENT de l'événement (confirmé sur données réelles : le log legacy porte "etat" par ligne) -- répond au besoin d'historique de statut sans table dédiée (sujets-reportes.md point 18)
+-    metadata              JSONB NOT NULL DEFAULT '{}'::jsonb, -- ex: {"destinataires": [...], "montant": ...}
+-    actor_account_id      BIGINT REFERENCES party_account(id), -- NULL si système/automatique
+-    ip_address            INET,
+-    created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+-);
+-
+-COMMENT ON TABLE booking_log IS 'Log unifié des événements d''une réservation (remplace hotelNotifier* et tout ce qui aurait pu devenir des booléens épars, ET les colonnes FK par type de réservation du log legacy -- un seul booking_id, cf. modele-conceptuel-booking.md). Append-only, jamais modifié. status_code_snapshot permet de reconstruire l''historique de statut sans table dédiée.';
+-
+-CREATE INDEX idx_booking_log_booking ON booking_log(booking_id, created_at);
+-CREATE INDEX idx_booking_log_event_type ON booking_log(event_type);
+-
+ 
+ -- ============================================================
+ -- booking_provider_snapshot : payload API brut fournisseur (JSONB),

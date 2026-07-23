@@ -1,0 +1,196 @@
+--- /home/claude/sql/schema-booking-v1.sql.orig	2026-07-20 22:29:00.000000000 +0000
++++ /home/claude/sql/schema-booking-v1.sql	2026-07-20 22:29:00.000000000 +0000
+@@ -7,9 +7,13 @@
+ --                   regroupement de réservations dans un même dossier).
+ --                   Brique consommatrice de party_ (tiers, bureaux) et
+ --                   ref_ (langues, devises).
+--- Version        : 1.0 - Brouillon initial, issu de la conception du
+---                   15/07/2026 (voir historique de discussion)
+--- Date           : 2026-07-15
++-- Version        : 1.2 - Réouverture ciblée du 20/07/2026 : renommage
++--                   booking_hotel_detail -> booking_accommodation_detail
++--                   (+ FK réelle ref_accommodation.id), processing_status_code
++--                   (+log_activity), booking_payment.collected_by_account_id,
++--                   correction définitions booking_channel.api_in/api_out,
++--                   ajout service 'guide', FK pointvente_id/pointvente_paiement_id.
++-- Date           : 2026-07-20
+ -- Réfs           : ADR-002 (logique métier hors DB, jamais de trigger
+ --                   métier), ADR-005 (soft delete sélectif), ADR-010
+ --                   (PostgreSQL 16), ADR-016 (partitionnement par date
+@@ -20,6 +24,14 @@
+ --                   voir schema-party-account-v1.sql) — À EXÉCUTER AVANT
+ --                   ref_currency (module ref_, voir schema-ref-common.sql)
+ --                   — À EXÉCUTER AVANT
++--                   ref_accommodation (module ref_static, schema-ref-static-v1.sql)
++--                   — À EXÉCUTER AVANT, nouveau depuis le 20/07 (FK réelle
++--                   sur booking_accommodation_detail)
++--                   pointvente (module pointvente_, schema-pointvente-v1.sql)
++--                   — À EXÉCUTER AVANT, nouveau depuis le 20/07 (FK sur booking)
++--                   log_entity_type (module log_, schema-log-v1.sql) — pas
++--                   de FK SQL réelle (entity_id applicatif), mais l'entrée
++--                   'booking' doit exister pour que log_activity fonctionne
+ --                   set_updated_at() — définie dans schema-party-account-v1.sql,
+ --                   réutilisée ici (à recréer si ce module est déployé
+ --                   indépendamment, cf. note dans schema-core-identity-v1.sql)
+@@ -43,7 +55,7 @@
+ -- Ajouter un nouveau service (ex: demande de visa) = une ligne ici,
+ -- pas une nouvelle table/menu/contrôleur. Extension spécifique
+ -- optionnelle possible via une table booking_<type>_detail (voir plus
+--- bas, exemple booking_hotel_detail).
++-- bas, exemple booking_accommodation_detail).
+ -- ============================================================
+ CREATE TABLE booking_service_type (
+     code        VARCHAR(30) PRIMARY KEY,
+@@ -66,6 +78,7 @@
+     ('visa',        8),
+     ('maritime',    9),
+     ('train',       10),
++    ('guide',       11), -- prestation facturée simple, aucune fiche Catalogue (confirmé Product/Catalogue, sujets-reportes.md §40)
+     ('other',       99);
+     -- city_tax retiré (15/07, 2e revirement) : rejoint booking_charge
+     -- comme timbre/frais_dossier -- même raisonnement : pas de
+@@ -95,8 +108,8 @@
+ INSERT INTO booking_channel (code, sort_order) VALUES
+     ('backoffice', 0), -- créée par un agent, back-office
+     ('web',        1), -- site web / app public
+-    ('api_in',     2), -- un partenaire B2B réserve notre inventaire via API
+-    ('api_out',    3); -- nous réservons chez un fournisseur via son API (ex: Tunisiabeds)
++    ('api_in',     2), -- CORRIGÉ 20/07 (sujets-reportes.md §49) : nous consommons l'API d'un tiers (ex: nous interrogeons/réservons chez un fournisseur via son API)
++    ('api_out',    3); -- CORRIGÉ 20/07 : nous exposons notre API à un partenaire (ex: un partenaire B2B/channel manager réserve notre inventaire via notre API)
+ 
+ -- ============================================================
+ -- TABLE DE RÉFÉRENCE : booking_status
+@@ -130,6 +143,43 @@
+ );
+ 
+ -- ============================================================
++-- TABLE DE RÉFÉRENCE : booking_processing_status
++-- État de SUIVI DE TRAITEMENT par l'équipe (ex: "En attente du client",
++-- "Client contacté sérieux", "Attente confirmation disponibilité"...) --
++-- ORTHOGONAL à booking_status (statut métier de la réservation :
++-- draft/confirmed/cancelled...). Un booking peut être status_code='draft'
++-- ET processing_status_code='client_contacted' simultanément, même
++-- principe déjà établi pour is_on_request vs status_code. Décision de
++-- session (20/07, sujets-reportes.md §35) : dénormalisée sur booking
++-- pour filtrage/affichage rapide (option c) + chaque changement loggé
++-- dans log_activity (module log_, entity_type='booking',
++-- event_type='processing_status_change') pour l'historique complet --
++-- même pattern que booking.status_code/booking_log historique (déjà
++-- résolu via log_activity.status_code_snapshot, voir modele-conceptuel-log.md).
++-- ============================================================
++CREATE TABLE booking_processing_status (
++    code        VARCHAR(30) PRIMARY KEY,
++    sort_order  SMALLINT NOT NULL DEFAULT 0,
++    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++COMMENT ON TABLE booking_processing_status IS 'Référentiel des états de suivi de traitement (équipe), orthogonal à booking_status. Table, pas ENUM -- même principe que le reste des référentiels Booking.';
++
++INSERT INTO booking_processing_status (code, sort_order) VALUES
++    ('pending_client_response',   0), -- En attente du client
++    ('client_contacted_serious',  1), -- Client contacté sérieux
++    ('pending_availability', 2); -- Attente confirmation disponibilité
++-- Liste volontairement minimale (3 exemples de sujets-reportes.md §35) --
++-- table extensible sans migration, à enrichir au fil de l'eau par l'équipe.
++
++CREATE TABLE booking_processing_status_translation (
++    processing_status_code  VARCHAR(30) NOT NULL REFERENCES booking_processing_status(code),
++    language_code            VARCHAR(5) NOT NULL REFERENCES ref_language(code),
++    label                    VARCHAR(100) NOT NULL,
++    PRIMARY KEY (processing_status_code, language_code)
++);
++
++-- ============================================================
+ -- TABLE DE RÉFÉRENCE : booking_on_request_reason
+ -- Pourquoi une réservation est "sur demande" (booking.is_on_request=true).
+ -- approval_type distingue QUI doit agir : 'supplier' (le fournisseur/
+@@ -219,7 +269,7 @@
+ -- booking : PIVOT, 1 ligne = 1 service = 1 fournisseur. Porte les
+ -- champs communs à tout type de service (~80%, cf. discussion) :
+ -- dates, montants, devises, statut. Le spécifique par service vit
+--- dans des tables d'extension 1-1 optionnelles (booking_hotel_detail...).
++-- dans des tables d'extension 1-1 optionnelles (booking_accommodation_detail...).
+ --
+ -- PARTITIONNEMENT (ADR-016) : par booking_date (date de création de la
+ -- réservation, PAS la date de séjour/départ — cf. start_date/end_date
+@@ -364,6 +414,18 @@
+     is_locked                                                                       BOOLEAN NOT NULL DEFAULT false, -- verrouillage anti-modification, besoin confirmé pour tout type de service
+     is_disputed                                                                        BOOLEAN NOT NULL DEFAULT false, -- litige client ou fournisseur -- simple flag de filtrage rapide, détail dans booking_note
+ 
++    -- Suivi de traitement (équipe), orthogonal à status_code -- dénormalisé
++    -- pour filtrage/affichage rapide, historique complet dans log_activity
++    -- (entity_type='booking', event_type='processing_status_change'),
++    -- voir décision de session 20/07 (sujets-reportes.md §35).
++    processing_status_code                                                             VARCHAR(30) REFERENCES booking_processing_status(code),
++
++    -- Points de vente (ajout 20/07, sujets-reportes.md §3/§30) -- deux
++    -- rôles distincts pouvant pointer vers des sites différents : où la
++    -- vente a été faite, où le client vient/doit payer.
++    pointvente_id                                                                      BIGINT REFERENCES pointvente(id),
++    pointvente_paiement_id                                                             BIGINT REFERENCES pointvente(id),
++
+     created_at                                                           TIMESTAMPTZ NOT NULL DEFAULT now(),
+     updated_at                                                             TIMESTAMPTZ NOT NULL DEFAULT now(),
+     created_by                                                               BIGINT REFERENCES party_account(id),
+@@ -407,12 +469,15 @@
+ CREATE INDEX idx_booking_supplier_reference ON booking(supplier_booking_reference) WHERE supplier_booking_reference IS NOT NULL;
+ CREATE INDEX idx_booking_origin ON booking(origin_booking_id) WHERE origin_booking_id IS NOT NULL;
+ CREATE INDEX idx_booking_disputed ON booking(id) WHERE is_disputed = true;
++CREATE INDEX idx_booking_processing_status ON booking(processing_status_code) WHERE processing_status_code IS NOT NULL;
++CREATE INDEX idx_booking_pointvente ON booking(pointvente_id) WHERE pointvente_id IS NOT NULL;
++CREATE INDEX idx_booking_pointvente_paiement ON booking(pointvente_paiement_id) WHERE pointvente_paiement_id IS NOT NULL;
+ 
+ CREATE TRIGGER trg_booking_updated_at BEFORE UPDATE ON booking
+     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+ 
+ -- ============================================================
+--- booking_hotel_detail : extension 1-1, EXEMPLE de table de détail
++-- booking_accommodation_detail : extension 1-1, EXEMPLE de table de détail
+ -- spécifique à un service. Volontairement minimale (même principe que
+ -- party_account_person_identity) -- uniquement ce qui n'a pas sa place
+ -- dans les champs communs de booking. D'autres services (flight,
+@@ -423,18 +488,18 @@
+ -- entière : une réservation hôtel n'a qu'un seul arrangement, même si
+ -- elle contient plusieurs chambres (cf. booking_hotel_room ci-dessous).
+ -- ============================================================
+-CREATE TABLE booking_hotel_detail (
+-    booking_id    BIGINT PRIMARY KEY, -- FK applicative vers booking.id (voir note partitionnement)
+-    hotel_code           VARCHAR(50),  -- vers futur référentiel Hôtels (Contracting), hors périmètre ici
+-    hotel_name_snapshot  VARCHAR(255), -- figé au moment de la réservation -- l'hôtel peut être renommé plus tard, la résa ne doit pas bouger
+-    board_type    VARCHAR(50),        -- pension : 'all_inclusive','half_board','room_only'... -- 1 seul par réservation
+-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
++CREATE TABLE booking_accommodation_detail (
++    booking_id                   BIGINT PRIMARY KEY, -- FK applicative vers booking.id (voir note partitionnement)
++    accommodation_id             BIGINT REFERENCES ref_accommodation(id), -- NULLABLE : résa antérieure à la réconciliation avec le référentiel, ou import legacy jamais rapproché
++    accommodation_name_snapshot  VARCHAR(255), -- figé au moment de la réservation -- l'hébergement peut être renommé plus tard, la résa ne doit pas bouger
++    board_type                   VARCHAR(50),  -- pension : 'all_inclusive','half_board','room_only'... -- 1 seul par réservation
++    created_at                   TIMESTAMPTZ NOT NULL DEFAULT now(),
++    updated_at                   TIMESTAMPTZ NOT NULL DEFAULT now()
+ );
+ 
+-COMMENT ON TABLE booking_hotel_detail IS 'Extension 1-1 spécifique hôtel, niveau réservation entière (hôtel, pension). Le détail par chambre vit dans booking_hotel_room (1-N).';
++COMMENT ON TABLE booking_accommodation_detail IS 'Extension 1-1 spécifique hébergement, niveau réservation entière (hébergement, pension). Le détail par chambre vit dans booking_hotel_room (1-N). Renommée depuis booking_hotel_detail (20/07) pour cohérence terminologique tout-anglais avec ref_accommodation (sujets-reportes.md §6/§33) -- accommodation_id remplace l''ancien hotel_code (texte libre, jamais relié à un référentiel) par une vraie FK.';
+ 
+-CREATE TRIGGER trg_booking_hotel_detail_updated_at BEFORE UPDATE ON booking_hotel_detail
++CREATE TRIGGER trg_booking_accommodation_detail_updated_at BEFORE UPDATE ON booking_accommodation_detail
+     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+ 
+ -- ============================================================
+@@ -662,6 +727,7 @@
+     id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+     booking_id         BIGINT NOT NULL, -- FK applicative vers booking.id (voir note partitionnement)
+     payer_split_id     BIGINT REFERENCES booking_payer_split(id), -- NULL = paiement global, non scindé
++    collected_by_account_id BIGINT REFERENCES party_account(id), -- agent/caissier ayant physiquement encaissé -- NULLABLE (legacy ne l'a pas systématiquement, sujets-reportes.md §30)
+ 
+     amount             BIGINT NOT NULL, -- centimes
+     currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
+@@ -948,7 +1014,7 @@
+ --    Plutôt que de propager booking_date sur chaque table fille
+ --    (booking_settlement, booking_payment, booking_traveler,
+ --    booking_hotel_room, booking_cancellation_policy,
+---    booking_provider_snapshot, booking_hotel_detail...) pour permettre
++--    booking_provider_snapshot, booking_accommodation_detail...) pour permettre
+ --    une FK SQL composite,
+ --    on assume une FK applicative sur booking_id seul (BIGINT,
+ --    globalement unique via IDENTITY, indépendamment des partitions),

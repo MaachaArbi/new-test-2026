@@ -1,0 +1,44 @@
+--- a/schema-ref-static-v1.sql
++++ b/schema-ref-static-v1.sql
+@@ (additif pur -- aucune ligne existante modifiée ou supprimée)
++-- ============================================================
++-- Réouverture ponctuelle documentée (19/07/2026), justifiée par la
++-- session Pricing -- même mécanisme que ref-static-airline-cabin-
++-- extension.diff et ref-static-accommodation-links.diff.
++--
++-- Origine : le ciblage pays départ/arrivée du moteur de marge vol
++-- (Pricing) a besoin de regrouper des pays (ex: "Maghreb", "Europe de
++-- l'Ouest") pour cibler plusieurs pays d'un coup dans une règle. Ce
++-- concept est de la géographie pure, sans rien de spécifique à la
++-- marge -- esquissé d'abord dans pricing_ par erreur, puis relocalisé
++-- ici : ref_static est la couche de base dont tout le reste dépend,
++-- rien n'y dépend en retour d'un module de plus haut niveau comme
++-- Pricing. Réutilisable par d'autres modules référençant déjà
++-- ref_country (Visa notamment, futur reporting géographique).
++-- ============================================================
++
++CREATE TABLE ref_country_group (
++    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
++    public_id   UUID NOT NULL DEFAULT gen_random_uuid(),
++    name        VARCHAR(150) NOT NULL, -- nom interne, pas de traduction (usage back-office uniquement à ce stade)
++    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
++    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE UNIQUE INDEX uq_ref_country_group_public_id ON ref_country_group(public_id);
++CREATE UNIQUE INDEX uq_ref_country_group_name ON ref_country_group(name);
++
++COMMENT ON TABLE ref_country_group IS 'Regroupement de pays réutilisable (ex: "Maghreb", "Europe de l''Ouest"). Introduit pour le ciblage pays départ/arrivée du moteur de marge vol (Pricing, session du 19/07/2026), mais générique -- géographie pure, sans dépendance vers Pricing. Réutilisable par tout module référençant déjà ref_country (Visa notamment).';
++
++CREATE TRIGGER trg_ref_country_group_updated_at BEFORE UPDATE ON ref_country_group
++    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
++
++CREATE TABLE ref_country_group_member (
++    group_id    BIGINT NOT NULL REFERENCES ref_country_group(id),
++    country_id  BIGINT NOT NULL REFERENCES ref_country(id),
++    PRIMARY KEY (group_id, country_id)
++);
++
++CREATE INDEX idx_ref_country_group_member_country ON ref_country_group_member(country_id);
++
++COMMENT ON TABLE ref_country_group_member IS 'Appartenance pays <-> groupe de pays, N-N (un pays peut appartenir à plusieurs groupes).';

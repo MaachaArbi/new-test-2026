@@ -1,0 +1,134 @@
+--- /home/claude/sql/schema-reglements-v1.sql.orig	2026-07-17 09:30:02.792322785 +0000
++++ /home/claude/sql/schema-reglements-v1.sql	2026-07-17 09:30:10.558165400 +0000
+@@ -8,7 +8,7 @@
+ -- Ordre      : 5ème script à exécuter (après booking_)
+ --
+ -- PRINCIPE   : grand livre append-only, immuable, à écritures signées,
+---              scopé par (party_account_id, party_role, currency_id).
++--              scopé par (party_account_id, party_role, currency_code).
+ --              Simple partie — crochet posé pour le futur Cash Management.
+ --              Toute correction = écriture nouvelle. Jamais d'UPDATE/DELETE.
+ -- ============================================================================
+@@ -87,7 +87,7 @@
+                          CHECK (party_role IN ('client','fournisseur')),
+ 
+     -- Devise native. Une pièce DT ne règle qu''un livre DT.
+-    currency_id        BIGINT NOT NULL REFERENCES ref_currency(id),
++    currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
+ 
+     payment_method_id  BIGINT NOT NULL REFERENCES reglement_payment_method(id),
+ 
+@@ -133,7 +133,7 @@
+  Les AD historiques migrées conservent leur DateEcheance dans due_date.';
+ 
+ CREATE UNIQUE INDEX uq_reglement_instrument_public_id ON reglement_instrument(public_id);
+-CREATE INDEX idx_reglement_instrument_party ON reglement_instrument(party_account_id, currency_id);
++CREATE INDEX idx_reglement_instrument_party ON reglement_instrument(party_account_id, currency_code);
+ CREATE INDEX idx_reglement_instrument_status ON reglement_instrument(status_code)
+     WHERE status_code <> 'active';
+ 
+@@ -152,7 +152,7 @@
+     target_account_id    BIGINT NOT NULL REFERENCES party_account(id),
+     target_role          VARCHAR(20) NOT NULL CHECK (target_role IN ('client','fournisseur')),
+ 
+-    currency_id          BIGINT NOT NULL REFERENCES ref_currency(id),
++    currency_code        VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
+     -- Partiel autorisé : amount_minor peut être inférieur au solde source.
+     amount_minor         BIGINT NOT NULL CHECK (amount_minor > 0),
+     effective_date       DATE NOT NULL,
+@@ -179,8 +179,8 @@
+  La FK transfer_id sur reglement_ledger_entry empêche toute jambe orpheline.';
+ 
+ CREATE UNIQUE INDEX uq_reglement_transfer_public_id ON reglement_transfer(public_id);
+-CREATE INDEX idx_reglement_transfer_source ON reglement_transfer(source_account_id, currency_id);
+-CREATE INDEX idx_reglement_transfer_target ON reglement_transfer(target_account_id, currency_id);
++CREATE INDEX idx_reglement_transfer_source ON reglement_transfer(source_account_id, currency_code);
++CREATE INDEX idx_reglement_transfer_target ON reglement_transfer(target_account_id, currency_code);
+ 
+ -- ============================================================
+ -- GRAND LIVRE — cœur immuable du module.
+@@ -195,7 +195,7 @@
+     party_account_id   BIGINT NOT NULL REFERENCES party_account(id),
+     party_role         VARCHAR(20) NOT NULL
+                          CHECK (party_role IN ('client','fournisseur')),
+-    currency_id        BIGINT NOT NULL REFERENCES ref_currency(id),
++    currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
+ 
+     entry_type_id      BIGINT NOT NULL REFERENCES reglement_entry_type(id),
+ 
+@@ -247,7 +247,7 @@
+ -- Index principal : lecture par livre, trié par date.
+ -- Sert le relevé d''un compte (solde progressif) et l''alimentation du snapshot.
+ CREATE INDEX idx_reglement_ledger_book ON reglement_ledger_entry
+-    (party_account_id, party_role, currency_id, effective_date, id);
++    (party_account_id, party_role, currency_code, effective_date, id);
+ 
+ CREATE UNIQUE INDEX uq_reglement_ledger_entry_public_id ON reglement_ledger_entry(public_id);
+ CREATE INDEX idx_reglement_ledger_booking   ON reglement_ledger_entry(booking_id)   WHERE booking_id   IS NOT NULL;
+@@ -277,13 +277,13 @@
+ CREATE TABLE reglement_balance (
+     party_account_id   BIGINT NOT NULL REFERENCES party_account(id),
+     party_role         VARCHAR(20) NOT NULL,
+-    currency_id        BIGINT NOT NULL REFERENCES ref_currency(id),
++    currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
+     balance_minor      BIGINT NOT NULL DEFAULT 0,
+     -- + tiers nous doit / − avance ou créditeur
+     last_entry_id      BIGINT REFERENCES reglement_ledger_entry(id),
+     entry_count        BIGINT NOT NULL DEFAULT 0,
+     updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+-    PRIMARY KEY (party_account_id, party_role, currency_id)
++    PRIMARY KEY (party_account_id, party_role, currency_code)
+ );
+ 
+ COMMENT ON TABLE reglement_balance IS
+@@ -299,11 +299,11 @@
+ RETURNS trigger LANGUAGE plpgsql AS $$
+ BEGIN
+     INSERT INTO reglement_balance AS b
+-        (party_account_id, party_role, currency_id, balance_minor, last_entry_id, entry_count)
++        (party_account_id, party_role, currency_code, balance_minor, last_entry_id, entry_count)
+     VALUES
+-        (NEW.party_account_id, NEW.party_role, NEW.currency_id,
++        (NEW.party_account_id, NEW.party_role, NEW.currency_code,
+          NEW.amount_minor, NEW.id, 1)
+-    ON CONFLICT (party_account_id, party_role, currency_id) DO UPDATE
++    ON CONFLICT (party_account_id, party_role, currency_code) DO UPDATE
+         SET balance_minor = b.balance_minor + NEW.amount_minor,
+             last_entry_id  = NEW.id,
+             entry_count    = b.entry_count + 1,
+@@ -325,7 +325,7 @@
+     public_id             UUID NOT NULL DEFAULT gen_random_uuid(),
+ 
+     -- Les deux écritures lettrées doivent appartenir au même livre
+-    -- (même party_account_id + party_role + currency_id).
++    -- (même party_account_id + party_role + currency_code).
+     -- Cette cohérence est applicative (pas une contrainte SQL transversale).
+     debit_entry_id        BIGINT NOT NULL REFERENCES reglement_ledger_entry(id),
+     credit_entry_id       BIGINT NOT NULL REFERENCES reglement_ledger_entry(id),
+@@ -388,7 +388,7 @@
+ 
+     INSERT INTO reglement_transfer
+         (source_account_id, source_role, target_account_id, target_role,
+-         currency_id, amount_minor, effective_date, reason, created_by)
++         currency_code, amount_minor, effective_date, reason, created_by)
+     VALUES
+         (p_source_id, p_source_role, p_target_id, p_target_role,
+          p_currency, p_amount, p_date, p_reason, p_created_by)
+@@ -396,7 +396,7 @@
+ 
+     -- Jambe SOURCE : on retire du dû (crédit, signe négatif)
+     INSERT INTO reglement_ledger_entry
+-        (party_account_id, party_role, currency_id, entry_type_id,
++        (party_account_id, party_role, currency_code, entry_type_id,
+          amount_minor, effective_date, transfer_id, memo, created_by)
+     VALUES
+         (p_source_id, p_source_role, p_currency, v_type_id,
+@@ -405,7 +405,7 @@
+ 
+     -- Jambe CIBLE : on ajoute du dû (débit, signe positif)
+     INSERT INTO reglement_ledger_entry
+-        (party_account_id, party_role, currency_id, entry_type_id,
++        (party_account_id, party_role, currency_code, entry_type_id,
+          amount_minor, effective_date, transfer_id, memo, created_by)
+     VALUES
+         (p_target_id, p_target_role, p_currency, v_type_id,
