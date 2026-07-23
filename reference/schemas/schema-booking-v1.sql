@@ -105,15 +105,16 @@ CREATE TABLE booking_service_type_translation (
 CREATE TABLE booking_service_extension (
     code        VARCHAR(30) PRIMARY KEY,
     label       VARCHAR(100) NOT NULL, -- libellé technique (anglais), pas destiné à l'UI
+    sort_order  SMALLINT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE booking_service_extension IS 'Référentiel des extensions structurelles de booking (accommodation, transport_segment, car_rental...). Source de vérité pour AssertBookingServiceType — pas de liste PHP figée.';
 
-INSERT INTO booking_service_extension (code, label) VALUES
-    ('accommodation',     'Accommodation detail / hotel rooms'),
-    ('transport_segment', 'Transport segments'),
-    ('car_rental',        'Car rental detail');
+INSERT INTO booking_service_extension (code, label, sort_order) VALUES
+    ('accommodation',     'Accommodation detail / hotel rooms', 0),
+    ('transport_segment', 'Transport segments',                 1),
+    ('car_rental',        'Car rental detail',                  2);
 
 -- ============================================================
 -- TABLE DE RÉFÉRENCE : booking_service_type_extension (N-N)
