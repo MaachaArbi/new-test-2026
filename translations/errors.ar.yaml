@@ -70,3 +70,10 @@ cash_session.holder_account_not_found: 'حساب الحامل غير موجود.
 cash_session.office_account_not_found: 'حساب الوكالة غير موجود.'
 cash_session.opened_by_not_found: 'حساب فاتح الجلسة غير موجود.'
 cash_session.closed_by_not_found: 'حساب مغلق الجلسة غير موجود.'
+cash_session.not_open: 'جلسة الصندوق غير مفتوحة.'
+cash_receive.instrument_not_found: 'أداة التسوية غير موجودة للتحصيل.'
+cash_receive.instrument_not_active: 'أداة التسوية غير نشطة.'
+cash_receive.routing_not_caisse: 'طريقة الدفع غير موجهة إلى الصندوق.'
+cash_receive.instrument_already_in_session: 'هذه الأداة محصلة بالفعل في هذه الجلسة.'
+cash_receive.received_by_not_found: 'حساب المستلم غير موجود.'
+

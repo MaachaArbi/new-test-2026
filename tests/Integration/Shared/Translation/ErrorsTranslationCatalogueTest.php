@@ -35,9 +35,15 @@ use App\Modules\Booking\Domain\Exception\InvalidBookingStateException;
 use App\Modules\Booking\Domain\Exception\InvalidBookingTransportSegmentException;
 use App\Modules\CashManagement\Domain\Exception\CashPaymentMethodRoutingAlreadyExistsException;
 use App\Modules\CashManagement\Domain\Exception\CashPaymentMethodRoutingNotFoundException;
+use App\Modules\CashManagement\Domain\Exception\CashReceiveInstrumentAlreadyInSessionException;
+use App\Modules\CashManagement\Domain\Exception\CashReceiveInstrumentNotActiveException;
+use App\Modules\CashManagement\Domain\Exception\CashReceiveInstrumentNotFoundException;
+use App\Modules\CashManagement\Domain\Exception\CashReceiveInstrumentRoutingNotCaisseException;
+use App\Modules\CashManagement\Domain\Exception\CashReceiveReceivedByNotFoundException;
 use App\Modules\CashManagement\Domain\Exception\CashRoutingTypeNotFoundException;
 use App\Modules\CashManagement\Domain\Exception\CashSessionAlreadyOpenException;
 use App\Modules\CashManagement\Domain\Exception\CashSessionNotFoundOrAlreadyClosedException;
+use App\Modules\CashManagement\Domain\Exception\CashSessionNotOpenException;
 use App\Modules\CashManagement\Domain\Exception\CashSessionReferencedAccountNotFoundException;
 use App\Modules\CashManagement\Domain\Exception\InvalidCashPaymentMethodRoutingException;
 use App\Modules\Core\Domain\Exception\InvalidCoreCredentialStateException;
@@ -188,6 +194,12 @@ final class ErrorsTranslationCatalogueTest extends KernelTestCase
             CashSessionReferencedAccountNotFoundException::forOffice(1)->errorCode(),
             CashSessionReferencedAccountNotFoundException::forOpenedBy(1)->errorCode(),
             CashSessionReferencedAccountNotFoundException::forClosedBy(1)->errorCode(),
+            CashSessionNotOpenException::forId(1, 'closed')->errorCode(),
+            CashReceiveInstrumentNotFoundException::forId(1)->errorCode(),
+            CashReceiveInstrumentNotActiveException::forId(1, 'returned')->errorCode(),
+            CashReceiveInstrumentRoutingNotCaisseException::forPaymentMethod(1, 'aucun')->errorCode(),
+            CashReceiveInstrumentAlreadyInSessionException::forSessionAndInstrument(1, 2)->errorCode(),
+            CashReceiveReceivedByNotFoundException::forId(1)->errorCode(),
         ];
     }
 }
