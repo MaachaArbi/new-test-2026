@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — Clôture PartyAccountRoleAssignment.
+`PartyAccountRoleAssignment` est **clos et validé** sur les trois couches (Domain + Application + Infrastructure). Aucun nouveau code dans cette entrée — récapitulatif de clôture uniquement. Détail livré :…
+`PartyAccountRoleAssignment` est **clos et validé** sur les trois couches
+(Domain + Application + Infrastructure). Aucun nouveau code dans cette entrée —
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — Clôture PartyAccountRoleAssignment
 
 ## Contexte

@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture BookingTraveler.
+`BookingTraveler` (snapshot voyageur) **clos et validé** (Domain + Application + Infra + migration + tests pax leader). Détail livré : `2026-07-22-booking-traveler.md`.
+`BookingTraveler` (snapshot voyageur) **clos et validé** (Domain +
+Application + Infra + migration + tests pax leader). Détail livré :
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture BookingTraveler
 
 ## Contexte

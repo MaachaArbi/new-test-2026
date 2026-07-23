@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — Clôture premier Controller + ExceptionListener.
+`GET /api/v1/party-accounts/{publicId}` + `ExceptionListener` JSON global sont **clos et validés**. Détail livré : `2026-07-21-first-controller-party-account.md`.
+`GET /api/v1/party-accounts/{publicId}` + `ExceptionListener` JSON global sont
+**clos et validés**. Détail livré :
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — Clôture premier Controller + ExceptionListener
 
 ## Contexte

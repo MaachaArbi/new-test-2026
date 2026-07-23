@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture crédit instrument + lettrage.
+Vague validée : crédit depuis instrument Active (`amountMinor` négatif,
+`reglement_client` / `reglement_fournisseur`), lettrage soft-unmatchable,
+même livre applicatif, plafonds crédit (formule schéma) **et** débit
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture crédit instrument + lettrage
 
 ## Clôture

@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture Booking transitions status_code.
+Transitions `status_code` du pivot `booking` **closes et validées** (Domain `transitionTo` + Handler dédié + tests). Détail livré : `2026-07-22-booking-status-transitions.md`.
+Transitions `status_code` du pivot `booking` **closes et validées**
+(Domain `transitionTo` + Handler dédié + tests). Détail livré :
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture Booking transitions status_code
 
 ## Contexte

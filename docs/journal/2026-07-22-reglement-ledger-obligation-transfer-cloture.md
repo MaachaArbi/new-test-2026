@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture grand livre Règlements (obligation + transfert).
+Vague validée : Domain append-only, obligation depuis Booking (INSERT
+Domain-contrôlé), transfert via `reglement_post_transfer()`, trigger
+prouvé empiriquement, exceptions Domain alignées, isolation tests
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture grand livre Règlements (obligation + transfert)
 
 ## Clôture

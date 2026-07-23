@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — Clôture PATCH + DELETE PartyAccount.
+`PATCH` / `DELETE /api/v1/party-accounts/{publicId}` sont **clos et validés**. Détail livré : `2026-07-21-party-account-update-delete-endpoints.md`. Décision soft-delete vs disable :…
+`PATCH` / `DELETE /api/v1/party-accounts/{publicId}` sont **clos et validés**.
+Détail livré : `2026-07-21-party-account-update-delete-endpoints.md`.
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — Clôture PATCH + DELETE PartyAccount
 
 ## Contexte

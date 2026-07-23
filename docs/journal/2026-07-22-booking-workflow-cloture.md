@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture Booking workflow flags.
+Mutations workflow du pivot `booking` **closes et validées** (Domain + Application Handler unique + mapping XML + tests no_changes). Détail livré : `2026-07-22-booking-workflow.md`. Hors périmètre confirmé :…
+Mutations workflow du pivot `booking` **closes et validées** (Domain +
+Application Handler unique + mapping XML + tests no_changes). Détail
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture Booking workflow flags
 
 ## Contexte

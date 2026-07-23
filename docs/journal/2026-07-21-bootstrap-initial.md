@@ -1,3 +1,20 @@
+## Reprise à froid
+
+BOOTSTRAP-REPORT — OsTravel.
+Bootstrap isolé d’un backend Symfony 7.2 + PostgreSQL 16 + Nginx/PHP-FPM via Docker Compose, sans toucher à l’application existante (`front-web` / Next / Gunicorn / Redis / Nginx hôte).
+Date : 2026-07-21
+Projet : `/home/ubuntu/ostravel/`
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # BOOTSTRAP-REPORT — OsTravel
 
 Date : 2026-07-21  

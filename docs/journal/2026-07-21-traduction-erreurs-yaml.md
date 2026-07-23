@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — Traduction erreurs YAML.
+- `symfony/translation` installé ; locales `en` / `fr` / `ar` ; fallback `en`.
+- Catalogues `translations/errors.{en,fr,ar}.yaml` (domain `errors`).
+- `InvalidPartyAccountStateException::errorCode()` aligné sur
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — Traduction erreurs YAML
 
 ## Faits

@@ -1,3 +1,75 @@
+## Reprise à froid
+
+Journal — Corrections ADR-003 appliquées.
+**Date :** 2026-07-22
+**Inventaire :** `docs/journal/2026-07-22-adr003-full-audit.md`
+**Décision :** `docs/decisions/2026-07-22-performance-first-review-criterion.md`
+
+## Origine
+
+```
+# TASK — Corriger l'audit ADR-003 (Catégorie A validée, B15-B18/C3 différés)
+
+## Portée validée
+Corriger UNIQUEMENT : B1, B3, B4, B5, B6, B7+B8, B9+B10, B11+B12, B13, P1-P8,
+P9-P13 (existence pure — pas les findById qui servent aussi à une mutation
+comme P11 si le même appel sert ensuite à muter, vérifier au cas par cas).
+NE PAS toucher : B15-B18 (GetBookingController, GetPartyAccountController,
+requireByPublicId — lecture indexée unitaire, coût/bénéfice jugé
+défavorable pour l'instant), C1-C3 (Core, différé), L1-L10 (légitimes,
+déjà identifiés comme load→mutate→save).
+
+## Principe de correction, uniforme sur tous les cas
+Remplacer "charger une collection/entité via ORM puis vérifier en PHP" par
+une requête DBAL ciblée :
+- Appartenance (B3, B4, B5) : SELECT 1 FROM <table> WHERE id = :childId
+  AND booking_id = :bookingId (ou l'équivalent exact selon la table),
+  jamais charger la collection complète
+- Existence/COUNT (B7-B13, P1-P8) : SELECT 1 FROM <table> WHERE ... (ou
+  EXISTS), jamais un COUNT(*) via QueryBuilder ORM sur une collection
+  hydratée
+- B1 (bookingCurrencies) : déjà spécifié précédemment — SELECT ciblé sur
+  les 2 colonnes devise
+
+Pour chaque Repository concerné, la méthode publique (interface Domain)
+garde la même signature — seul le mécanisme interne change (DBAL au lieu
+d'ORM). Ne pas changer les Handlers appelants sauf si strictement
+nécessaire.
+
+## Vérification stricte
+Pour CHAQUE méthode corrigée : confirme dans le journal qu'elle n'a plus
+aucun appel à createQueryBuilder()->select(Entité::class) ni
+$this->entityManager->find() pour ces cas précis — grep de contrôle après
+correction, pas juste avant.
+
+## Tests
+AUCUNE régression attendue sur le comportement observable (les tests
+existants doivent tous rester verts sans modification de leurs
+assertions — seul le mécanisme change). Si un test devait changer, le
+signaler explicitement et expliquer pourquoi.
+
+## Documentation
+- docs/journal/2026-07-22-adr003-corrections-applied.md : la liste des
+  corrections appliquées (référencer les IDs B1, B3-B13, P1-P13 de
+  l'inventaire), confirmation grep de contrôle
+- docs/backlog/todo.md : marquer B15-B18/C3 comme "différé — coût/bénéfice
+  jugé défavorable pour des lectures indexées unitaires, à revisiter avec
+  du volume réel"
+- docs/STATUS.md
+
+Relance phpstan/deptrac/phpcpd/phpunit sur l'ensemble du projet (pas juste
+Booking — Party et Core sont aussi concernés). Colle le résultat du grep
+de contrôle final, et le contenu d'au moins 3-4 fichiers représentatifs
+corrigés (un de chaque catégorie : appartenance, existence Booking,
+existence Party) avant de considérer la vague close.
+```
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — Corrections ADR-003 appliquées
 
 **Date :** 2026-07-22  

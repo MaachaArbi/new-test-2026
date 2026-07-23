@@ -1,3 +1,55 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — Corrections noyau Domain Party.
+Après la première livraison du noyau Domain Party, deux corrections ont été apportées puis validées. Aucun nouveau code dans cette clôture doc — récapitulatif uniquement.
+Fichier d’exception manquant à la première livraison ; fourni ensuite (`parentAccountNotAllowedForPerson()`, etc.). Validé.
+- VO immuable `App\Shared\Domain\ValueObject\PublicId` : `generate()`, `fromString()`, `toString()`
+
+## Origine
+
+```
+# TASK — Clôture documentation : noyau Domain Party
+
+Le noyau Domain Party (ValueObjects Email/PartyAccountNature, agrégat PartyAccount,
+PartyAccountRepositoryInterface, exceptions, PublicId partagé) est terminé et validé.
+Aucun nouveau code à écrire dans ce prompt — uniquement mise à jour de la
+documentation de suivi.
+
+## docs/STATUS.md (réécriture complète)
+- Symfony/PHP/Postgres/phpcpd : inchangé
+- Module Party : "Noyau Domain terminé et validé (ValueObjects, agrégat racine,
+  repository interface, PublicId extrait dans Shared/Domain). Reste : assignations
+  rôle/fonction/groupe, mapping Doctrine, Controller."
+- Ajouter une ligne "Shared/Domain" dans le tableau modules ou une section dédiée :
+  contient désormais PublicId (VO réutilisable, cf. ADR-018), disponible pour tout
+  futur module.
+- Dernière action : clôture noyau Domain Party (PublicId extrait suite revue)
+- Prochaine action : à définir (assignations Party ou Infrastructure — en attente
+  de décision utilisateur, ne pas présumer)
+
+## docs/journal/2026-07-21-party-domain-noyau-corrections.md (nouveau fichier)
+Résume les deux corrections apportées après la première livraison :
+1. InvalidPartyAccountStateException.php manquant à la première livraison, fourni
+2. PublicId extrait de PartyAccount vers Shared/Domain/ValueObject/ (anti-duplication
+   anticipée — tous les futurs agrégats en auront besoin), ramsey/uuid installé,
+   règle deptrac ModuleDomain → SharedDomain ajoutée
+Inclure les résultats finaux des 4 outils (déjà connus, juste les recopier).
+
+## docs/backlog/in-progress.md et todo.md
+Retirer "mapping Doctrine XML" de in-progress.md si présent par erreur (ce n'était
+pas commencé) — le laisser dans todo.md uniquement, avec Party comme dépendance
+maintenant satisfaite (noyau Domain prêt à être mappé).
+
+Réponds avec le contenu final de docs/STATUS.md uniquement (pas besoin de recoller
+le journal, je fais confiance au format déjà validé deux fois).
+```
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — Corrections noyau Domain Party
 
 ## Contexte

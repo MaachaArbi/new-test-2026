@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture Booking extension hôtel.
+Extension hôtel **close et validée** (`BookingAccommodationDetail` 1-1 + `BookingHotelRoom` 1-N + Handlers + migration + tests). Détail livré : `2026-07-22-booking-hotel-extension.md`.
+Extension hôtel **close et validée** (`BookingAccommodationDetail` 1-1 +
+`BookingHotelRoom` 1-N + Handlers + migration + tests). Détail livré :
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture Booking extension hôtel
 
 ## Contexte

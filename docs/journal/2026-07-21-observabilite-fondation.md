@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — Fondation observabilité.
+- `App\Shared\Domain\Exception\DomainException` : base abstraite (`context()`, `errorCode()`).
+- Party : `InvalidEmailException` / `InvalidPartyAccountStateException` héritent de cette base ; factories enrichies.
+- Monolog Bundle installé ; logs JSON dans `var/log/` (tous environnements).
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — Fondation observabilité
 
 ## Faits

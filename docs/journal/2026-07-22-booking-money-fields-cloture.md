@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture Booking montants / devises / Money.
+Vague montants/devises du pivot `booking` **close et validée** (Shared Domain + Booking Domain/Application/Infrastructure + migration + tests). Détail livré : `2026-07-22-booking-money-fields.md`. Hors périmètre…
+Vague montants/devises du pivot `booking` **close et validée**
+(Shared Domain + Booking Domain/Application/Infrastructure + migration +
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture Booking montants / devises / Money
 
 ## Contexte

@@ -1,3 +1,97 @@
+## Reprise à froid
+
+Journal — Audit complet ADR-003 (lectures ORM).
+**Date :** 2026-07-22
+**Statut :** INVENTAIRE — **en attente de validation** (aucune correction appliquée dans cette étape)
+**Décision liée :** `docs/decisions/2026-07-22-performance-first-review-criterion.md`
+
+## Origine
+
+```
+# TASK — Audit complet ADR-003 : éliminer toute lecture ORM restante
+
+## Principe à graver dans le projet (pas juste corriger ce prompt-ci)
+Créer docs/decisions/2026-07-22-performance-first-review-criterion.md :
+« Priorité #1 non négociable du projet : PERFORMANCE. Priorité #2 :
+SÉCURITÉ. Toute décision de conception qui les compromet doit être
+signalée explicitement, jamais glissée en silence. Rappel opérationnel
+concret (ADR-003) : AUCUNE lecture ne doit passer par Doctrine ORM
+(EntityManager, QueryBuilder ->select(entité)), uniquement par DBAL
+(Connection, SQL direct). Exception légitime : charger une entité via
+ORM est acceptable UNIQUEMENT quand l'objectif est de la MUTER puis la
+sauvegarder (ex: findById() avant recalculateTotals()+save()) — jamais
+pour une simple lecture d'information ou une vérification d'appartenance/
+existence. »
+
+Ajouter une ligne équivalente dans docs/backlog/todo.md, section
+Transverse, comme rappel permanent à vérifier à chaque nouvelle vague :
+« Avant de clore toute vague touchant à un Repository : vérifier qu'aucune
+lecture pure (info, vérification d'appartenance/existence, comptage)
+ne passe par l'ORM — uniquement DBAL. »
+
+## Audit — chercher CHAQUE occurrence dans tout le projet (Party, Core, Booking)
+Grep systématique de tous les Repository (Doctrine*.php) et Application
+(*Handler.php, Assert*.php) pour :
+- createQueryBuilder()->select('alias')->from(Entité::class, 'alias')
+  utilisé pour une lecture pure (pas suivi d'une mutation+save sur CE
+  MÊME objet)
+- $this->entityManager->find(Entité::class, ...) utilisé pour une
+  vérification (ex: "existe-t-il", "appartient-il à") plutôt que pour
+  charger-muter-sauvegarder
+- Toute méthode findByXxx() dont le SEUL usage dans le code est une
+  boucle de comparaison (ex: assertRoomBelongsToBooking,
+  assertTravelerBelongsToBooking, assertSegmentBelongsToBooking — charger
+  toute la collection via ORM puis chercher un ID dedans, au lieu d'un
+  EXISTS/COUNT DBAL ciblé sur la paire exacte)
+
+Lister CHAQUE occurrence trouvée dans le journal AVANT de corriger quoi
+que ce soit — un inventaire complet d'abord, pour que je puisse le
+vérifier, plutôt que des corrections dispersées difficiles à auditer.
+
+## Corrections attendues (exemples déjà identifiés, à confirmer/étendre)
+1. bookingCurrencies() — déjà spécifié (fait précédemment, vérifier que
+   c'est bien fait si pas encore appliqué)
+2. assertRoomBelongsToBooking (BookingCancellationPolicy) : remplacer la
+   boucle sur collection ORM par une requête DBAL ciblée
+   (SELECT 1 FROM booking_hotel_room WHERE id = :roomId AND booking_id =
+   :bookingId), pas de chargement de collection
+3. assertTravelerBelongsToBooking / assertSegmentBelongsToBooking
+   (AddBookingCharge) : même traitement — requête DBAL EXISTS ciblée sur
+   la paire exacte, jamais charger toute la liste pour boucler en PHP
+4. Tout autre cas trouvé par l'audit (Party inclus — vérifier
+   spécifiquement les méthodes d'appartenance déjà écrites ce matin,
+   comme sur PartyAccountGroup si un pattern similaire existe)
+
+## Ce qui reste légitimement en ORM (ne pas toucher)
+- Tout findById()/findByPublicId() dont le résultat est ensuite muté puis
+  sauvegardé dans le même Handler (ex: recalculateTotals(), disable(),
+  revoke()...) — c'est l'usage normal de l'ORM pour les écritures
+
+## Tests
+Pour chaque correction : vérifier qu'aucun test existant ne casse
+(comportement observable identique), et si un test vérifiait le nombre de
+requêtes ou un comportement N+1, l'ajuster si besoin. Pas de nouveaux
+tests de comportement nécessaires (le résultat métier ne change pas),
+mais ajouter si pertinent un commentaire dans le test existant confirmant
+"DBAL après correction".
+
+## Documentation
+- docs/journal/2026-07-22-adr003-full-audit.md : liste complète des
+  occurrences trouvées, celles corrigées, celles jugées légitimes et
+  pourquoi
+- docs/STATUS.md
+
+Relance phpstan/deptrac/phpcpd/phpunit. Colle le contenu intégral du
+journal d'audit AVANT toute correction (pour validation de l'inventaire),
+puis les fichiers corrigés une fois validés.
+```
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — Audit complet ADR-003 (lectures ORM)
 
 **Date :** 2026-07-22  

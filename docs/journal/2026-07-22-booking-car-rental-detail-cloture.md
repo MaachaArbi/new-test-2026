@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture BookingCarRentalDetail.
+`BookingCarRentalDetail` **clos et validé** (Domain + Application + Infra + Assert data-driven `car_rental` + tests). Détail livré : `2026-07-22-booking-car-rental-detail.md`. Les 3 extensions par service (hôtel,…
+`BookingCarRentalDetail` **clos et validé** (Domain + Application +
+Infra + Assert data-driven `car_rental` + tests). Détail livré :
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture BookingCarRentalDetail
 
 ## Contexte

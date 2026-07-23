@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — Clôture liste paginée PartyAccounts.
+`GET /api/v1/party-accounts` (DBAL / ADR-003) est **clos et validé**. Détail livré : `2026-07-21-list-party-accounts-endpoint.md`.
+`GET /api/v1/party-accounts` (DBAL / ADR-003) est **clos et validé**.
+Détail livré : `2026-07-21-list-party-accounts-endpoint.md`.
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — Clôture liste paginée PartyAccounts
 
 ## Contexte

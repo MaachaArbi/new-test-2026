@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture BookingTransportSegment.
+`BookingTransportSegment` **clos et validé** (Domain + Application + Infra + Assert multi-types + tests). Détail livré : `2026-07-22-booking-transport-segment.md`.
+`BookingTransportSegment` **clos et validé** (Domain + Application +
+Infra + Assert multi-types + tests). Détail livré :
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture BookingTransportSegment
 
 ## Contexte

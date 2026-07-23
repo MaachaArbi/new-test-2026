@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — Clôture organization_identity + office.
+`PartyAccountOrganizationIdentity` + `PartyAccountOffice` sont **clos et validés** (Domain + Application + Infrastructure + bootstrap agence + corrections). Détail livré :…
+`PartyAccountOrganizationIdentity` + `PartyAccountOffice` sont **clos et validés**
+(Domain + Application + Infrastructure + bootstrap agence + corrections).
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — Clôture organization_identity + office
 
 ## Contexte

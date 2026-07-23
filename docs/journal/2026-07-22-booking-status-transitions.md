@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Booking : transitions status_code.
+Première mutation sur `statusCode` de l'agrégat `Booking`. Référentiel `booking_status` : draft / on_option / confirmed / completed / cancelled / no_show (`is_final` informatif côté seed SQL).
+Première mutation sur `statusCode` de l'agrégat `Booking`. Référentiel
+`booking_status` : draft / on_option / confirmed / completed / cancelled /
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Booking : transitions status_code
 
 ## Contexte

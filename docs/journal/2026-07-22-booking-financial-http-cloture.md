@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-22 — Clôture HTTP pan financier Booking.
+Vague HTTP charges / settlements / payer-splits **close et validée** (3 POST, ExceptionListener, WebTestCase × 3). Détail livré : `2026-07-22-booking-financial-http.md`. Handlers Application **inchangés**…
+Vague HTTP charges / settlements / payer-splits **close et validée**
+(3 POST, ExceptionListener, WebTestCase × 3). Détail livré :
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-22 — Clôture HTTP pan financier Booking
 
 ## Contexte

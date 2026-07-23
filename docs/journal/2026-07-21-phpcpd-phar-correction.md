@@ -1,3 +1,20 @@
+## Reprise à froid
+
+Journal — 2026-07-21 — correction phpcpd PHAR.
+Remplacer `sebastian/phpcpd` Composer (vendor racine) par le PHAR officiel autonome ;
+ne pas utiliser l’approche vendor isolé `tools/phpcpd/`.
+1. `composer remove --dev sebastian/phpcpd` — package absent du vendor/lock
+
+## Origine
+
+Origine : introuvable dans l'historique Cursor disponible
+
+## Décisions prises
+
+Décisions attribuées : non déterminable avec certitude
+
+---
+
 # Journal — 2026-07-21 — correction phpcpd PHAR
 
 ## Demandé
