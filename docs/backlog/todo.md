@@ -56,8 +56,10 @@
 - [x] Alignement migration sur schéma officiel (VARCHAR(20) + seed 11 modes) — **clos** — `2026-07-22-cash-payment-method-routing-schema-fix.md`
 - [x] Pivot `cash_session` open/close (`cash_open_session` / `cash_close_session`, lecture DBAL) — **clos** — `2026-07-23-cash-session-open-close.md`
 - [x] `cash_movement_type` + `cash_movement` + guard + `cash_receive_instrument` (5 validations) — **clos** — `2026-07-23-cash-receive-instrument.md`
-- [ ] Décaissement / transferts / conversions / balances/counts
-- [ ] Fonctions PL/pgSQL à appeler (validate / reverse / allocate / …)
+- [x] `cash_session_balance` + trigger refresh + backfill — **clos** — `2026-07-23-cash-session-balance-backfill.md`
+- [ ] Décaissement / transferts / conversions
+- [ ] Comptage / validation session (`cash_count_session_currency`, `cash_validate_session`) — **différé** (chantier frontend) — `docs/decisions/2026-07-23-cash-count-validate-differe.md`
+- [ ] Fonctions PL/pgSQL à appeler (reverse / allocate / …)
 - [ ] Banque, dépôts, transmission externe, rapprochement
 - [ ] HTTP Cash Management
 
