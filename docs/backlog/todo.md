@@ -47,7 +47,7 @@
 - [x] Crédit instrument + lettrage `reglement_matching` (plafonds crédit+débit) — **clos** — `2026-07-22-reglement-credit-matching.md` · clôture `2026-07-22-reglement-credit-matching-cloture.md`
 - [x] Lecture métier `reglement_balance` (DBAL, jamais d'écriture) — cohérence bout-en-bout trigger ↔ SUM — `2026-07-22-reglement-balance-read.md`
 - [x] HTTP instrument / transition / crédit / matching / solde — `2026-07-22-reglements-http.md`
-- [ ] Orchestration auto-matching (compose les primitives)
+- [ ] Orchestration auto-matching — **différée** (3 mécanismes distincts ; reprise chantier frontend) — `docs/decisions/2026-07-23-reglement-auto-matching-differe.md`
 - [ ] Clone phpcpd **accepté** : `BookingHttpSupport` ↔ `ReglementsHttpSupport` (decode+validate+json). Isolation module — pas d'extraction Shared sans vague dédiée.
 
 ## Cash Management
