@@ -98,6 +98,36 @@ final class CashSessionPersistenceTest extends KernelTestCase
         }
     }
 
+    public function test_open_rejects_missing_office_account(): void
+    {
+        $accounts = $this->seedAccounts('MissOffice');
+
+        try {
+            ($this->openHandler)(new OpenCashSessionCommand(
+                holderAccountId: $accounts['holderId'],
+                officeAccountId: 999_999_973,
+            ));
+            self::fail('Expected CashSessionReferencedAccountNotFoundException');
+        } catch (CashSessionReferencedAccountNotFoundException $exception) {
+            self::assertSame('cash_session.office_account_not_found', $exception->errorCode());
+        }
+    }
+
+    public function test_open_rejects_missing_opened_by_account(): void
+    {
+        $accounts = $this->seedAccounts('MissOpener');
+
+        try {
+            ($this->openHandler)(new OpenCashSessionCommand(
+                holderAccountId: $accounts['holderId'],
+                openedBy: 999_999_972,
+            ));
+            self::fail('Expected CashSessionReferencedAccountNotFoundException');
+        } catch (CashSessionReferencedAccountNotFoundException $exception) {
+            self::assertSame('cash_session.opened_by_not_found', $exception->errorCode());
+        }
+    }
+
     public function test_open_rejects_second_open_for_same_holder(): void
     {
         $accounts = $this->seedAccounts('DblOpen');

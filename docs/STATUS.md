@@ -12,7 +12,7 @@
 | Shared | Domain VO + NumericDecimal + UnitOfWork + PHPStan flush |
 | Core | Credential + JWT ; UnitOfWork |
 | Booking | HTTP complet sur tout le pan financier historisé (charges, settlements, payer-splits). Reste : payment (différé), B15-B18/C3 ADR-003 (différé). |
-| Règlements | HTTP complet sur instrument/transition/crédit/matching/solde. Reste : orchestration auto-matching. |
+| Règlements | HTTP complet sur instrument/transition/crédit/matching/solde. Orchestration auto-matching **différée** (reprise chantier frontend). |
 | Cash Management | Référentiel routing fait. Pivot `cash_session` open/close fait (DBAL → fonctions SQL). Reste : movements/balances, validate/reverse/allocate, banque, dépôts, HTTP. |
 
 ## Dernière action
