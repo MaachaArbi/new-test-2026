@@ -128,4 +128,60 @@ Avant commit : `git status reference/` ne montrait **pas** `schema-booking-v1.sq
 
 ## Étape 5 — Rapport de vérification post-push
 
-*(rempli après push — voir section ci-dessous mise à jour)*
+Clone temporaire : `git clone --depth 1 git@github.com:MaachaArbi/new-test-2026.git`  
+HEAD vérifié : `ae10fe9`
+
+### Les 26 fichiers de l'Étape 2 — présents (missing=0)
+
+- `reference/meta/00-INDEX.md`
+- `reference/meta/01-architecture_decisions.md`
+- `reference/meta/00-project_overview.md`
+- `reference/meta/sujets-reportes.md`
+- `reference/schemas/schema-cash-management-v1.sql`
+- `reference/schemas/schema-core-identity-v1.sql`
+- `reference/schemas/schema-invoicing-v1.sql`
+- `reference/schemas/schema-log-v1.sql`
+- `reference/schemas/schema-party-account-v1.sql`
+- `reference/schemas/schema-permissions-config-v1.sql`
+- `reference/schemas/schema-pointvente-v1.sql`
+- `reference/schemas/schema-product-catalogue-v1.sql`
+- `reference/schemas/schema-provider-integration-v1.sql`
+- `reference/schemas/schema-ref-static-v1.sql`
+- `reference/schemas/pricing-test-data.sql`
+- `reference/schemas/diff-booking-log-generalization.diff`
+- `reference/schemas/diff-booking-reouverture-20-07.diff`
+- `reference/schemas/diff-core-auth-avancee.sql`
+- `reference/schemas/diff-party-franchise.sql`
+- `reference/schemas/diff-pricing-payment-modality.sql`
+- `reference/schemas/party-account-group-extension.diff`
+- `reference/schemas/ref-common-hebergement-extension.diff`
+- `reference/schemas/ref-static-accommodation-links.diff`
+- `reference/schemas/ref-static-airline-cabin-extension.diff`
+- `reference/schemas/ref-static-country-group-extension.diff`
+- `reference/schemas/reglements-currency_code-fix.diff`
+
+### `schema-booking-v1.sql` — non modifié
+
+- Absent du commit `ae10fe9` (non stagé).
+- `cmp` package reçu vs repo : **différents** (exclusion correcte).
+- Repo (conservé) : `label VARCHAR(100)`, libellés techniques anglais, **pas** de `sort_order` dans le CREATE TABLE de référence.
+- Package reçu (non copié) : `label VARCHAR(80)`, contenu français, avec `sort_order`.
+- SHA-256 repo : `67425b1c29bd904c1d2e969e5c7dc49d73e85b4ae1e63b2d780789ddeef8d5eb`
+- SHA-256 reçu : `9116c4c6e6a2718ab29c52913af381ebcee08c82259a9999677ca9f3c91ff426`
+
+### Compte exact 44
+
+| Catégorie | Nombre |
+|---|---|
+| Copiés (Étape 2) | 26 |
+| Déjà identiques schemas (pricing / reglements / ref-common) | 3 |
+| Déjà identiques conceptual-models (`modele-conceptuel-*.md`) | 12 |
+| Exclus agent (`00-EXPERT-REVIEW.md`, `starter-prompt-cloture-permissions.md`) | 2 |
+| Exclu ce round (`schema-booking-v1.sql`) | 1 |
+| **Total** | **44** |
+
+Vérifications annexes : les 3 schemas « déjà identiques » et les 12 conceptual-models sont bien `cmp`-identiques byte pour byte ; les 2 exclus agent sont absents de `reference/`.
+
+### Écarts
+
+Aucun écart par rapport au mapping demandé.
