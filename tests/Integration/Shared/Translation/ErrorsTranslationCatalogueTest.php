@@ -36,6 +36,9 @@ use App\Modules\Booking\Domain\Exception\InvalidBookingTransportSegmentException
 use App\Modules\CashManagement\Domain\Exception\CashPaymentMethodRoutingAlreadyExistsException;
 use App\Modules\CashManagement\Domain\Exception\CashPaymentMethodRoutingNotFoundException;
 use App\Modules\CashManagement\Domain\Exception\CashRoutingTypeNotFoundException;
+use App\Modules\CashManagement\Domain\Exception\CashSessionAlreadyOpenException;
+use App\Modules\CashManagement\Domain\Exception\CashSessionNotFoundOrAlreadyClosedException;
+use App\Modules\CashManagement\Domain\Exception\CashSessionReferencedAccountNotFoundException;
 use App\Modules\CashManagement\Domain\Exception\InvalidCashPaymentMethodRoutingException;
 use App\Modules\Core\Domain\Exception\InvalidCoreCredentialStateException;
 use App\Modules\Party\Domain\Exception\InvalidPartyAccountStateException;
@@ -179,6 +182,12 @@ final class ErrorsTranslationCatalogueTest extends KernelTestCase
             CashPaymentMethodRoutingNotFoundException::forPaymentMethodId(999_999_978)->errorCode(),
             CashPaymentMethodRoutingAlreadyExistsException::forPaymentMethodId(1)->errorCode(),
             InvalidCashPaymentMethodRoutingException::inconsistentTracking('aucun', 'individual')->errorCode(),
+            CashSessionAlreadyOpenException::forHolder(1)->errorCode(),
+            CashSessionNotFoundOrAlreadyClosedException::forId(1)->errorCode(),
+            CashSessionReferencedAccountNotFoundException::forHolder(1)->errorCode(),
+            CashSessionReferencedAccountNotFoundException::forOffice(1)->errorCode(),
+            CashSessionReferencedAccountNotFoundException::forOpenedBy(1)->errorCode(),
+            CashSessionReferencedAccountNotFoundException::forClosedBy(1)->errorCode(),
         ];
     }
 }

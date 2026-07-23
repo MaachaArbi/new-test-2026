@@ -54,7 +54,8 @@
 
 - [x] Référentiel routing (`cash_routing_type` + `cash_payment_method_routing`, contrainte croisée Domain) — **clos** — `2026-07-22-cash-payment-method-routing.md`
 - [x] Alignement migration sur schéma officiel (VARCHAR(20) + seed 11 modes) — **clos** — `2026-07-22-cash-payment-method-routing-schema-fix.md`
-- [ ] Pivot `cash_session` / `cash_movement` (+ balances/counts)
+- [x] Pivot `cash_session` open/close (`cash_open_session` / `cash_close_session`, lecture DBAL) — **clos** — `2026-07-23-cash-session-open-close.md`
+- [ ] `cash_movement` (+ balances/counts)
 - [ ] Fonctions PL/pgSQL à appeler (validate / reverse / allocate / …)
 - [ ] Banque, dépôts, transmission externe, rapprochement
 - [ ] HTTP Cash Management

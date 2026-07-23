@@ -140,6 +140,10 @@ services:
         alias: App\Modules\CashManagement\Infrastructure\Persistence\DoctrineCashPaymentMethodRoutingRepository
         public: true
 
+    App\Modules\CashManagement\Domain\Repository\CashSessionRepositoryInterface:
+        alias: App\Modules\CashManagement\Infrastructure\Persistence\DbalCashSessionRepository
+        public: true
+
     App\Modules\Core\Domain\Security\PasswordHasherInterface:
         alias: App\Modules\Core\Infrastructure\Security\SymfonyPasswordHasher
         public: true
