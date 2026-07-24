@@ -1,7 +1,7 @@
 # Modèle conceptuel — Cash Management (Caisses & Banques)
 
 **Statut** : V1.0 — figé le 17 juillet 2026
-**Dépend de** : Party V1.2 (`party_account_office`), Règlements V1.0 (`reglement_instrument`, `reglement_payment_method`)
+**Dépend de** : Party V1.2 (`party_account_office`), Règlements V1.0 (`settlement_instrument`, `settlement_payment_method`)
 **Documents associés** : `schema-cash-management-v1.sql`, `reglements-currency_code-fix.diff`
 **Testé sur** : PostgreSQL 16 réel, scénarios synthétiques construits à partir du fonctionnement legacy décrit par l'utilisateur (aucune donnée de relevé bancaire réelle disponible à ce jour — voir Limites).
 
@@ -9,7 +9,7 @@
 
 ## Principe directeur
 
-Deux journaux jumeaux append-only — les sessions de caisse et les comptes bancaires — reliés par le bordereau de remise et la transmission externe. Cash Management ne recalcule **jamais** un solde tiers : il consomme `reglement_payment_method` via la table compagnon `cash_payment_method_routing` pour savoir où router physiquement chaque pièce, sans aucun code en dur. La garde physique d'une pièce est **dérivée** (`cash_instrument_location`), jamais saisie manuellement.
+Deux journaux jumeaux append-only — les sessions de caisse et les comptes bancaires — reliés par le bordereau de remise et la transmission externe. Cash Management ne recalcule **jamais** un solde tiers : il consomme `settlement_payment_method` via la table compagnon `cash_payment_method_routing` pour savoir où router physiquement chaque pièce, sans aucun code en dur. La garde physique d'une pièce est **dérivée** (`cash_instrument_location`), jamais saisie manuellement.
 
 Contrairement à Party/Booking/Règlements, ce module part d'une conception neuve : le legacy (`ost_c_sessioncaisse`, `ost_banque_*`) a servi de liste de fonctionnalités à confronter, jamais de gabarit structurel (voir `00-INDEX.md`, principe directeur du 16/07).
 
@@ -20,7 +20,7 @@ Contrairement à Party/Booking/Règlements, ce module part d'une conception neuv
 | Table | Rôle |
 |---|---|
 | `cash_routing_type` | Référentiel : `caisse` / `banque_directe` / `transmission_externe` / `aucun` |
-| `cash_payment_method_routing` | Extension 1-1 de `reglement_payment_method` (même pattern que `party_account_office`/`party_account`). Pilote 100% du routing, plus aucun code en dur |
+| `cash_payment_method_routing` | Extension 1-1 de `settlement_payment_method` (même pattern que `party_account_office`/`party_account`). Pilote 100% du routing, plus aucun code en dur |
 | `cash_movement_type` | Référentiel des types de mouvement de caisse (jamais ENUM) |
 | `cash_session` | La caisse EST la session (pas d'entité caisse persistante séparée) |
 | `cash_movement` | Journal append-only des sessions, montant signé, devise par ligne |
@@ -48,7 +48,7 @@ Contrairement à Party/Booking/Règlements, ce module part d'une conception neuv
 Confirmé sur données réelles (`ost_c_sessioncaisse` ne porte ni devise ni caisse persistante). Le fond de caisse ne se transmet **jamais** automatiquement d'une session à l'autre du même utilisateur — cohérent avec le principe legacy "enveloppe" : l'argent retourne au caissier central à chaque validation.
 
 ### 2. Mode de règlement 100% configurable, aucun code en dur
-`cash_payment_method_routing` étend `reglement_payment_method` sans réouverture du schéma Règlements. Créer un nouveau mode = une ligne dans chaque table. Le moteur ne connaît aucun code (`E`, `C`, `AD`...) en dur — il lit `routing_type_code` et `instrument_tracking_mode`.
+`cash_payment_method_routing` étend `settlement_payment_method` sans réouverture du schéma Règlements. Créer un nouveau mode = une ligne dans chaque table. Le moteur ne connaît aucun code (`E`, `C`, `AD`...) en dur — il lit `routing_type_code` et `instrument_tracking_mode`.
 
 **Nuance actée** : `is_cash_like` (Règlements) répond à "transite physiquement par une caisse" ; `routing_type_code` (Cash Management) répond à "vers où, y compris sans caisse". Les deux peuvent diverger — cas concret : le virement (`V`) est `is_cash_like=false` côté Règlements mais `routing_type_code='banque_directe'` ici, car il doit être rapproché sur relevé sans jamais toucher une caisse.
 
@@ -91,7 +91,7 @@ Corrige deux limites legacy : l'hypothèse "1 compte = 1 bureau" (corrigée le 1
 
 Trois défauts trouvés en testant le scénario réel (20 clients → 50 000 TND espèces, paiement fournisseur 10 000, dépôt 40 000+libre) et un chèque non déposé :
 
-1. **`currency_id` → `currency_code`** : `schema-reglements-v1.sql` référençait une colonne inexistante sur `ref_currency` (bug pré-existant, isolé au module Règlements, corrigé en 4+13 occurrences — voir `reglements-currency_code-fix.diff`).
+1. **`currency_id` → `currency_code`** : `schema-settlement-v1.sql` référençait une colonne inexistante sur `ref_currency` (bug pré-existant, isolé au module Règlements, corrigé en 4+13 occurrences — voir `reglements-currency_code-fix.diff`).
 2. **`cash_allocate_fifo` bloquait à tort** un décaissement financé par du pool libre suffisant, en exigeant une couverture à 100% par du stock individuellement traçable. Corrigé : allocation best-effort, garde-fou de solde déplacé sur `cash_post_outflow`.
 3. **`cash_validate_session` tentait de rouvrir temporairement** une session `closed`, violant la contrainte de cycle de vie. Corrigé : `closed` reste inscriptible pour les écritures de validation ; seule `validated` est vraiment figée.
 

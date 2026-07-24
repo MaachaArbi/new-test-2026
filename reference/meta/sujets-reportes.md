@@ -8,7 +8,7 @@ Document vivant. Chaque sujet volontairement écarté du périmètre en cours do
 
 **20/07 (réouverture ciblée Booking — généralisation booking_log)** : §19 clos (module transverse `log_` construit et testé), §48 point 2 clos (ADR-006/`log_audit` enfin construite). Nouveau module documenté dans `00-INDEX.md` : **Log** (`log_entity_type`/`log_activity`/`log_audit`), `modele-conceptuel-log.md`, `schema-log-v1.sql`, `diff-booking-log-generalization.diff`.
 
-**20/07 (2e réouverture ciblée Booking — 5 ajouts additifs)** : §6/§33 clos (renommage `booking_accommodation_detail` + FK réelle `ref_accommodation`), §30 clos (`booking_payment.collected_by_account_id` + FK `pointvente_id`/`pointvente_paiement_id` sur `booking`), §35 clos (`processing_status_code` + `log_activity`, option hybride), §49 clos (définitions `api_in`/`api_out` corrigées, codes inchangés), service `guide` ajouté à `booking_service_type`. **Conséquence structurelle** : `schema-ref-static-v1.sql` et `schema-pointvente-v1.sql` doivent désormais s'exécuter **avant** `schema-booking-v1.sql` (ordre corrigé dans `00-INDEX.md`). Point "attribution de siège" (`seat_id`) explicitement reporté à une session dédiée à part.
+**20/07 (2e réouverture ciblée Booking — 5 ajouts additifs)** : §6/§33 clos (renommage `booking_accommodation_detail` + FK réelle `ref_accommodation`), §30 clos (`booking_payment.collected_by_account_id` + FK `sales_point_id`/`sales_point_payment_id` sur `booking`), §35 clos (`processing_status_code` + `log_activity`, option hybride), §49 clos (définitions `api_in`/`api_out` corrigées, codes inchangés), service `guide` ajouté à `booking_service_type`. **Conséquence structurelle** : `schema-ref-static-v1.sql` et `schema-sales_point-v1.sql` doivent désormais s'exécuter **avant** `schema-booking-v1.sql` (ordre corrigé dans `00-INDEX.md`). Point "attribution de siège" (`seat_id`) explicitement reporté à une session dédiée à part.
 
 ---
 
@@ -36,11 +36,11 @@ Document vivant. Chaque sujet volontairement écarté du périmètre en cours do
 ## 3. Point de vente — ✅ RÉSOLU le 17/07/2026
 
 **Origine** : rattache un utilisateur interne à un bureau physique.
-**Décision finale** : table de référence légère `pointvente`, FK `office_account_id` vers `party_account(id)` (doit porter `party_account_office`, règle applicative). **Volontairement PAS un `party_account`** — question posée explicitement par l'utilisateur (réutiliser `party_account` avec un attribut ?), tranchée par la négative : `party_account` = acteur économique (achète/vend/doit), un point de vente n'est acteur de rien. Voir `modele-conceptuel-pointvente.md` pour le raisonnement complet.
+**Décision finale** : table de référence légère `sales_point`, FK `office_account_id` vers `party_account(id)` (doit porter `party_account_office`, règle applicative). **Volontairement PAS un `party_account`** — question posée explicitement par l'utilisateur (réutiliser `party_account` avec un attribut ?), tranchée par la négative : `party_account` = acteur économique (achète/vend/doit), un point de vente n'est acteur de rien. Voir `modele-conceptuel-sales_point.md` pour le raisonnement complet.
 **Cardinalité** : N points de vente par bureau, très variable selon le bureau, aucune limite.
 **Rattachement client** : confirmé inutile — le point de vente ne concerne que la résa/le paiement, jamais le tiers.
 **Fiche** : adresse/contact propres au point de vente (pas hérités du bureau). Pas de `code` court (aucun besoin réel confirmé — facile à ajouter plus tard). Désactivation via `is_active` simple, jamais de suppression physique.
-**Précision (module Booking)** : `pointvente_id`/`pointVentePaiement_id` confirmés sur données réelles (hôtel ET maritime) — deux rôles distincts (vente / paiement, potentiellement des sites différents) pointant vers la **même** table `pointvente`. Booking n'a pas été modifié dans cette session — ajout des deux FK nullables à faire dans une session dédiée au chat pilote Booking. **✅ Fait le 20/07/2026** : `booking.pointvente_id`/`booking.pointvente_paiement_id` ajoutées (nullable, `REFERENCES pointvente(id)`), voir clôture point 30.
+**Précision (module Booking)** : `sales_point_id`/`salesPointPayment_id` confirmés sur données réelles (hôtel ET maritime) — deux rôles distincts (vente / paiement, potentiellement des sites différents) pointant vers la **même** table `sales_point`. Booking n'a pas été modifié dans cette session — ajout des deux FK nullables à faire dans une session dédiée au chat pilote Booking. **✅ Fait le 20/07/2026** : `booking.sales_point_id`/`booking.sales_point_payment_id` ajoutées (nullable, `REFERENCES sales_point(id)`), voir clôture point 30.
 **Cash Management** : vérifié, aucun recouvrement — `cash_session.office_account_id` est purement informatif, scopé par `holder_account_id` (le caissier), indépendant du point de vente.
 **Enrichissements évalués et écartés** (horaires d'ouverture, géolocalisation) : aucune valeur fonctionnelle réelle identifiée, refusés pour éviter la sur-ingénierie.
 **Nouveau sujet ouvert par cette session** : voir point 29 ci-dessous (rendement agents/points de vente).
@@ -146,14 +146,14 @@ Triage complet des 21 paramètres identifiés (capture legacy `ost_amicale`) :
 
 ## 21. ★ MODULE RÈGLEMENTS CLIENT/FOURNISSEUR — ✅ FIGÉ V1.0 (16/07/2026)
 
-**Statut** : Conception terminée. Voir `modele-conceptuel-reglements.md` et `schema-reglements-v1.sql`.
+**Statut** : Conception terminée. Voir `modele-conceptuel-settlement.md` et `schema-settlement-v1.sql`.
 
 **Ce qui a été construit** :
-- Grand livre append-only (`reglement_ledger_entry`), immuable par trigger, clé `(party_account_id, party_role, currency_id)`
-- Snapshot de solde (`reglement_balance`), O(comptes), réconcilié avec SUM à froid
-- Instrument de paiement (`reglement_instrument`) avec cycle de vie propre
-- Lettrage N-N optionnel (`reglement_matching`) — ne touche pas le solde
-- Transfert de solde atomique (`reglement_transfer` + `reglement_post_transfer()`)
+- Grand livre append-only (`settlement_ledger_entry`), immuable par trigger, clé `(party_account_id, party_role, currency_id)`
+- Snapshot de solde (`settlement_balance`), O(comptes), réconcilié avec SUM à froid
+- Instrument de paiement (`settlement_instrument`) avec cycle de vie propre
+- Lettrage N-N optionnel (`settlement_matching`) — ne touche pas le solde
+- Transfert de solde atomique (`settlement_transfer` + `settlement_post_transfer()`)
 - Fonction de posting comme seul chemin d'écriture
 
 **Décisions irréversibles actées** :
@@ -166,7 +166,7 @@ Triage complet des 21 paramètres identifiés (capture legacy `ost_amicale`) :
 - `booking_payer_split` → source de la projection de l'obligation (lu, jamais modifié)
 - `invoice_id`/`credit_note_id` → **✅ branchés le 18/07/2026** (FK réelles ajoutées par `ALTER TABLE` additif dans `schema-invoicing-v1.sql`, Règlements non rouvert). Utilisés uniquement pour les lignes libres (écriture nouvelle) et pour la contre-passation d'un avoir (toujours une écriture nouvelle, ancré ou libre) — jamais pour une ligne facture ancrée simple, qui ne touche jamais le grand livre. Voir `modele-conceptuel-facturation.md`.
 - `is_cash_like` → crochet Cash Management, ✅ résolu (voir point 21bis)
-- `SolvencyCheckerInterface` → lira `reglement_balance` (implémentation prévue dans le futur module Pricing/Finance — **toujours non implémentée**, voir §25bis et §54)
+- `SolvencyCheckerInterface` → lira `settlement_balance` (implémentation prévue dans le futur module Pricing/Finance — **toujours non implémentée**, voir §25bis et §54)
 
 ---
 
@@ -178,13 +178,13 @@ Triage complet des 21 paramètres identifiés (capture legacy `ost_amicale`) :
 - La caisse EST la session (pas d'entité caisse persistante), fond de caisse non persistant entre sessions du même utilisateur — confirmé conforme au principe legacy "enveloppe".
 - Compte bancaire ↔ bureaux : N-N symétrique, aucun titulaire privilégié.
 - Rapprochement à deux niveaux (pièce individuelle ET bordereau), coexistants.
-- Mode de règlement 100% configurable via `cash_payment_method_routing` (table compagnon 1-1 de `reglement_payment_method`) — plus aucun code en dur par code de mode de règlement.
+- Mode de règlement 100% configurable via `cash_payment_method_routing` (table compagnon 1-1 de `settlement_payment_method`) — plus aucun code en dur par code de mode de règlement.
 - Fongibilité de l'espèce configurable (`instrument_tracking_mode` individual/aggregate) — résout la perte de traçabilité espèces sans changement opérationnel (idée "caisse de dépense" de l'utilisateur, jamais implémentée en legacy, remplacée par ce mécanisme).
 - Isolation stricte des sources activable par mode de règlement (`strict_source_isolation`) — option rare (1 déploiement/~100), activée pour ce client sur l'espèce.
 - Validation caissier central tout ou rien, transmission externe PC regroupée dès la V1.
 - Rattachement caissier central↔bureau simple, interne à `cash_` (pas de dépendance RBAC/module 7 — cohérent avec le modèle de vente par licence/module).
 
-**Correctif appliqué en cours de route** : `schema-reglements-v1.sql` référençait `ref_currency(id)`, colonne inexistante (`ref_currency` a pour PK `code`). Corrigé en `currency_code VARCHAR(3) REFERENCES ref_currency(code)`, aligné sur Party/Booking. Documenté comme correctif (pas une réouverture de décision) — voir addendum dans `01-architecture_decisions.md` et `reglements-currency_code-fix.diff`.
+**Correctif appliqué en cours de route** : `schema-settlement-v1.sql` référençait `ref_currency(id)`, colonne inexistante (`ref_currency` a pour PK `code`). Corrigé en `currency_code VARCHAR(3) REFERENCES ref_currency(code)`, aligné sur Party/Booking. Documenté comme correctif (pas une réouverture de décision) — voir addendum dans `01-architecture_decisions.md` et `reglements-currency_code-fix.diff`.
 
 **Points restés ouverts** :
 - Routing par défaut à confirmer avec l'utilisateur pour 4 modes de règlement (`V`, `VE`, `RC`, `RI`) — posés par déduction raisonnable dans le seed, ajustables par simple `UPDATE` sans migration.
@@ -197,24 +197,24 @@ Triage complet des 21 paramètres identifiés (capture legacy `ost_amicale`) :
 ## 22. Transfert de solde inter-livres — construit en V1, à documenter sur cas réels
 
 **Origine** : besoin découvert via le bricolage legacy (ristourne + fausse réservation diverse pour reporter une dette employé vers son amicale).
-**Ce qui est construit** : `reglement_transfer` + `reglement_post_transfer()`. Partiel autorisé, sans contrainte de parenté, annulable en bloc.
+**Ce qui est construit** : `settlement_transfer` + `settlement_post_transfer()`. Partiel autorisé, sans contrainte de parenté, annulable en bloc.
 **Ce qui manque** : jamais testé sur un vrai cas de report de dette (le bricolage legacy ne laisse pas de données propres à analyser). Valider sur le premier cas réel en production.
-**Règle** : toujours passer par `reglement_post_transfer()`, jamais d'INSERT direct.
+**Règle** : toujours passer par `settlement_post_transfer()`, jamais d'INSERT direct.
 
 ---
 
 ## 23. Fonctions de posting complémentaires (à écrire avec l'équipe dev)
 
-`reglement_post_transfer()` est écrite et testée. Les suivantes sont documentées comme pattern mais non implémentées en V1 (leur signature dépend de l'API Symfony) :
-- `reglement_post_obligation(booking_id, payer_split_id, effective_date)` — projection de l'obligation à la validation
-- `reglement_post_credit(instrument_id, booking_id, amount, effective_date)` — crédit issu d'une pièce
-- `reglement_post_reversal(entry_id, effective_date, reason)` — contre-passation
+`settlement_post_transfer()` est écrite et testée. Les suivantes sont documentées comme pattern mais non implémentées en V1 (leur signature dépend de l'API Symfony) :
+- `settlement_post_obligation(booking_id, payer_split_id, effective_date)` — projection de l'obligation à la validation
+- `settlement_post_credit(instrument_id, booking_id, amount, effective_date)` — crédit issu d'une pièce
+- `settlement_post_reversal(entry_id, effective_date, reason)` — contre-passation
 
 **À faire** : définir les signatures avec l'équipe dev avant tout développement Symfony du module.
 
 ---
 
-## 24. Concurrence sur reglement_balance
+## 24. Concurrence sur settlement_balance
 
 **Situation** : le trigger AFTER INSERT convient pour une charge modérée (un seul INSERT à la fois sur un même compte). En cas de traitement batch (ex: import de paiements en masse), plusieurs transactions concurrentes sur le même compte peuvent provoquer une contention sur la ligne de solde.
 **Solution recommandée** : maintien applicatif transactionnel (`SELECT FOR UPDATE` sur la ligne de balance avant UPDATE, dans la même transaction que l'INSERT ledger). À implémenter dès que le batch est envisagé.
@@ -273,7 +273,7 @@ Décision explicite de l'utilisateur, à rappeler dans chaque prompt de démarra
 
 **Question ouverte posée par l'utilisateur à son équipe, jamais tranchée** : qui touche la prime au final — un agent désigné par résa, ou une répartition par tâche entre tous les agents impliqués ? Sujet **en instance** côté métier, pas seulement côté conception.
 
-**Pourquoi ce n'est pas dans le module Point de vente** : `pointvente` reste une table de référence légère, aucune colonne supplémentaire n'y est nécessaire pour ce futur rapport (un simple `GROUP BY pointvente.id` suffira une fois la politique tranchée). Le sujet touche les **agents = utilisateurs**, donc relève strictement du **module 5 (ex-module 7, Utilisateurs avancés/permissions/franchises)**.
+**Pourquoi ce n'est pas dans le module Point de vente** : `sales_point` reste une table de référence légère, aucune colonne supplémentaire n'y est nécessaire pour ce futur rapport (un simple `GROUP BY sales_point.id` suffira une fois la politique tranchée). Le sujet touche les **agents = utilisateurs**, donc relève strictement du **module 5 (ex-module 7, Utilisateurs avancés/permissions/franchises)**.
 
 **Matière première déjà disponible côté Booking** (bonne nouvelle, pas besoin de tout reconstruire) : `booking_log` et `booking_approval` tracent déjà `actor_account_id` par événement (contact client, confirmation fournisseur...). Voir point 30 ci-dessous pour le trou identifié sur l'encaissement.
 
@@ -282,8 +282,8 @@ Décision explicite de l'utilisateur, à rappeler dans chaque prompt de démarra
 ## 30. `booking_payment` — aucune attribution d'agent/caissier encaisseur — ✅ RÉSOLU le 20/07/2026
 
 **Constat** : `booking_payment` (schema-booking-v1.sql) capture le payeur via `payer_split_id`, mais **aucune colonne ne capture quel agent/caissier a physiquement encaissé** le paiement. Si un jour l'encaissement partiel par agent doit être primé (voir point 29), cette table manquera d'une colonne (`collected_by_account_id` ou équivalent).
-**Action (obsolète)** : ne rien modifier maintenant — signalement pour une session future dédiée au chat pilote Booking, à traiter en même temps que l'ajout des FK `pointvente_id`/`pointvente_paiement_id` sur `booking` (voir point 3 ci-dessus).
-**✅ Résolu le 20/07/2026** : `booking_payment.collected_by_account_id BIGINT REFERENCES party_account(id)`, nullable (legacy ne l'a pas systématiquement). FK `pointvente_id`/`pointvente_paiement_id` ajoutées sur `booking` dans la même réouverture (voir clôture point 3). Testé en sandbox.
+**Action (obsolète)** : ne rien modifier maintenant — signalement pour une session future dédiée au chat pilote Booking, à traiter en même temps que l'ajout des FK `sales_point_id`/`sales_point_payment_id` sur `booking` (voir point 3 ci-dessus).
+**✅ Résolu le 20/07/2026** : `booking_payment.collected_by_account_id BIGINT REFERENCES party_account(id)`, nullable (legacy ne l'a pas systématiquement). FK `sales_point_id`/`sales_point_payment_id` ajoutées sur `booking` dans la même réouverture (voir clôture point 3). Testé en sandbox.
 
 ---
 
@@ -351,31 +351,31 @@ Décision explicite de l'utilisateur, à rappeler dans chaque prompt de démarra
 
 **Points de couplage avec les autres modules** :
 - `booking_payer_split`/`booking_settlement`/`booking_charge` (type `fiscal_stamp`) → lus, jamais modifiés
-- `reglement_ledger_entry.invoice_id`/`credit_note_id` → branchés (voir point 21 ci-dessus)
-- `pointvente_id` → FK nullable en en-tête, reporting uniquement
+- `settlement_ledger_entry.invoice_id`/`credit_note_id` → branchés (voir point 21 ci-dessus)
+- `sales_point_id` → FK nullable en en-tête, reporting uniquement
 - `cash_external_transmission_item.accompanying_invoice_id` → confirmé sans recouvrement, reste une pièce jointe documentaire, non modifié
 
 **Points restés ouverts** (voir aussi les notes d'implémentation dans `schema-invoicing-v1.sql`) :
 - **Lien facture client ↔ facture fournisseur (cas GNV)** : système où le client est lui-même considéré comme fournisseur (billetterie maritime GNV). Explicitement écarté du périmètre V1 sur demande explicite de l'utilisateur — trop spécifique à un seul client, complexité jugée disproportionnée. À reprendre uniquement si un besoin réel resurgit.
 - **Répartition automatique d'un avoir sur plusieurs factures distinctes** (quand la réservation annulée a été facturée sur plusieurs factures) : jamais rencontré en pratique. Choix retenu : défalquage manuel par l'utilisateur, aucune règle système. À reconfronter au premier cas réel.
 - **Réémission après avoir sur split figé** : le modèle ne permet pas nativement de refacturer un montant déjà facturé puis annulé par avoir (la capacité du split est définitivement consommée). À traiter en exception documentée si un besoin réel émerge, pas de mécanisme prévu en V1.
-- **Verrou applicatif, pas structurel, sur la modification d'une facture validée** : rien n'empêche en base de modifier `invoicing_invoice_line` après passage de la facture en `status_code='validated'` (contrairement à l'append-only garanti par trigger sur `reglement_ledger_entry`). À la charge de la couche applicative Symfony, ou à durcir en base si un incident réel le justifie.
-- `invoicing_post_credit_from_cancellation()` : signature à définir avec l'équipe dev (dépend de l'API applicative Booking/Symfony), même statut que les fonctions de posting Règlements manquantes (`reglement_post_obligation`, etc.)
+- **Verrou applicatif, pas structurel, sur la modification d'une facture validée** : rien n'empêche en base de modifier `invoicing_invoice_line` après passage de la facture en `status_code='validated'` (contrairement à l'append-only garanti par trigger sur `settlement_ledger_entry`). À la charge de la couche applicative Symfony, ou à durcir en base si un incident réel le justifie.
+- `invoicing_post_credit_from_cancellation()` : signature à définir avec l'équipe dev (dépend de l'API applicative Booking/Symfony), même statut que les fonctions de posting Règlements manquantes (`settlement_post_obligation`, etc.)
 - Calcul exact TVA (formule précise de passage TTC→HT selon le mode de vente) : responsabilité applicative, le schéma stocke le résultat sans l'imposer.
 
 ---
 
 ## 39. Incohérence de nommage FR/EN entre modules — reporté (18/07/2026)
 
-**Origine** : en corrigeant `schema-invoicing-v1.sql` → `schema-invoicing-v1.sql` (renommage complet des identifiants en anglais, demandé explicitement par l'utilisateur), le constat suivant est apparu : certains modules déjà figés portent des préfixes **français** (`reglement_` — Règlements Client/Fournisseur, `pointvente_` — Point de vente), alors que tous les autres sont déjà en anglais (`party_`, `core_`, `ref_`, `booking_`, `cash_`, et désormais `invoicing_`, `pricing_`).
+**Origine** : en corrigeant `schema-invoicing-v1.sql` → `schema-invoicing-v1.sql` (renommage complet des identifiants en anglais, demandé explicitement par l'utilisateur), le constat suivant est apparu : certains modules déjà figés portent des préfixes **français** (`settlement_` — Règlements Client/Fournisseur, `sales_point_` — Point de vente), alors que tous les autres sont déjà en anglais (`party_`, `core_`, `ref_`, `booking_`, `cash_`, et désormais `invoicing_`, `pricing_`).
 
-**Décision de cette session** : ne pas toucher aux modules déjà figés maintenant — `reglement_` et `pointvente_` sont potentiellement déjà consommés par du code applicatif (Symfony), et un renommage de préfixe à ce stade est une migration, pas une simple correction de style. Reporté.
+**Décision de cette session** : ne pas toucher aux modules déjà figés maintenant — `settlement_` et `sales_point_` sont potentiellement déjà consommés par du code applicatif (Symfony), et un renommage de préfixe à ce stade est une migration, pas une simple correction de style. Reporté.
 
 **Renommages pressentis pour une future passe dédiée** (à confirmer en session, pas de décision définitive ici) :
-- `reglement_*` → `settlement_*` ou `payment_*` (à trancher — "settlement" est plus proche du sens du module, "payment" plus étroit puisque le module couvre aussi les obligations, pas seulement les règlements reçus)
-- `pointvente_` → `sales_point_` ou `outlet_`
+- `settlement_*` → `settlement_*` ou `payment_*` (à trancher — "settlement" est plus proche du sens du module, "payment" plus étroit puisque le module couvre aussi les obligations, pas seulement les règlements reçus)
+- `sales_point_` → `sales_point_` ou `outlet_`
 
-**À faire avant toute exécution** : lister précisément l'impact (tables, colonnes de FK dans d'autres modules qui référencent ces préfixes — au moins `booking.pointvente_id`/`pointVentePaiement_id` à venir, `cash_` qui étend `reglement_payment_method`, `invoicing_` qui vient de brancher des FK sur `reglement_ledger_entry`), et confirmer si c'est fait en une seule migration SQL (`ALTER TABLE ... RENAME`) plutôt qu'une réécriture des fichiers `schema-*.sql` historiques (qui, eux, font foi de l'historique des décisions et ne doivent probablement pas être réécrits rétroactivement).
+**À faire avant toute exécution** : lister précisément l'impact (tables, colonnes de FK dans d'autres modules qui référencent ces préfixes — au moins `booking.sales_point_id`/`salesPointPayment_id` à venir, `cash_` qui étend `settlement_payment_method`, `invoicing_` qui vient de brancher des FK sur `settlement_ledger_entry`), et confirmer si c'est fait en une seule migration SQL (`ALTER TABLE ... RENAME`) plutôt qu'une réécriture des fichiers `schema-*.sql` historiques (qui, eux, font foi de l'historique des décisions et ne doivent probablement pas être réécrits rétroactivement).
 
 ---
 
@@ -513,13 +513,13 @@ Stratégie actée par l'utilisateur : sur une période de 2-3 mois, les deux sys
 - Idempotence / gestion de resynchronisation (une résa legacy modifiée/annulée après import initial)
 - Rapprochement périodique recommandé (ex: hebdomadaire) entre les deux systèmes sur échantillon, pour éviter une découverte d'écarts accumulés en fin de période plutôt qu'un contrôle continu
 
-**Effet de bord positif** : ce travail forcera l'implémentation réelle des fonctions de posting Règlements (`reglement_post_obligation` etc.), actuellement documentées comme pattern non implémenté (point 23).
+**Effet de bord positif** : ce travail forcera l'implémentation réelle des fonctions de posting Règlements (`settlement_post_obligation` etc.), actuellement documentées comme pattern non implémenté (point 23).
 
 ## 48. Trois points identifiés par le chat pilote Backend (19/07/2026) — à traiter, priorité libre
 
 Analyse du chat "00-Main DEV Backend" (cadrage architecture Symfony), vérifiée et confirmée dans ce chat :
 
-1. **Soft delete incohérent** : `01-architecture_decisions.md` (ADR-005, vieux de 6 mois) dit "soft delete uniquement sur customers/bookings/invoices/payments, hard delete ailleurs". Réalité vérifiée dans les schémas construits : `deleted_at` présent sur `party_account`/`party_account_address`/`party_account_document`, `booking_folder`, `core_credential`, `pointvente` — mais **absent** sur `invoicing_invoice` et `reglement_ledger_entry` (que l'ADR nomme pourtant explicitement "invoices"/"payments"). ADR-005 obsolète, à recadrer par rapport à ce qui a été réellement conçu (le caractère append-only de Règlements rend d'ailleurs le soft delete conceptuellement inadapté à cette table — contre-passation plutôt que suppression).
+1. **Soft delete incohérent** : `01-architecture_decisions.md` (ADR-005, vieux de 6 mois) dit "soft delete uniquement sur customers/bookings/invoices/payments, hard delete ailleurs". Réalité vérifiée dans les schémas construits : `deleted_at` présent sur `party_account`/`party_account_address`/`party_account_document`, `booking_folder`, `core_credential`, `sales_point` — mais **absent** sur `invoicing_invoice` et `settlement_ledger_entry` (que l'ADR nomme pourtant explicitement "invoices"/"payments"). ADR-005 obsolète, à recadrer par rapport à ce qui a été réellement conçu (le caractère append-only de Règlements rend d'ailleurs le soft delete conceptuellement inadapté à cette table — contre-passation plutôt que suppression).
 
 2. **Audit trail décidé sur papier, jamais construit — ✅ RÉSOLU le 20/07/2026** : `01-architecture_decisions.md` (ADR-006, vieux de 6 mois) décidait une table `audit_logs` générique + trigger réutilisable. Construite sous le nom `log_audit` (module transverse `log_`, voir clôture complète §19) dans la réouverture Booking du 20/07, en même temps que `log_activity`. Trigger générique `log_audit_trigger()` testé en sandbox (capture avant/après confirmée sur `INSERT`/`UPDATE`, y compris sur `booking` malgré son partitionnement). `pricing_rule_log` (Pricing, ✅ figé) reste un cas local séparé, non fusionné.
 
@@ -722,29 +722,29 @@ Analyse du chat "00-Main DEV Backend" (cadrage architecture Symfony), vérifiée
 
 **Cadre d'analyse retenu (réutilisable sur tout module)** : quatre sortes de tables « _type », une seule est le piège. (1) carte d'éligibilité/capacité → doit être portée par le référentiel ; (2) attribut de comportement manquant → l'attribut doit vivre sur le référentiel ; (3) discriminateur où le code EST le comportement (`pricing_rule_nature`, `pricing_value_type`) → laisser, non « data-drivable » ; (4) label descriptif (`product_*_type`, `ref_room_category`) → laisser. Test : *le backend serait-il forcé de coder en dur une liste/branche qu'il pourrait lire depuis la table ?*
 
-**Audit des modules figés** : deux vrais pièges trouvés — `booking_service_type` (éligibilité, ci-dessous) et `booking_charge_type` (nature de charge absente, Volet B). Faux positifs confirmés bien conçus : `invoicing_tax_type` (taux dans `invoicing_tax_rate`), `reglement_entry_type`/`reglement_payment_method`/`cash_movement_type`/`booking_status` (portent déjà `normal_sign`/`is_cash_like`/`is_final`). Candidats jaunes laissés hors scope tant qu'aucune branche backend n'est confirmée : `booking_channel`, `cash_routing_type`, `cash_deposit_type`, `ref_charge_unit`/`ref_charge_frequency`.
+**Audit des modules figés** : deux vrais pièges trouvés — `booking_service_type` (éligibilité, ci-dessous) et `booking_charge_type` (nature de charge absente, Volet B). Faux positifs confirmés bien conçus : `invoicing_tax_type` (taux dans `invoicing_tax_rate`), `settlement_entry_type`/`settlement_payment_method`/`cash_movement_type`/`booking_status` (portent déjà `normal_sign`/`is_cash_like`/`is_final`). Candidats jaunes laissés hors scope tant qu'aucune branche backend n'est confirmée : `booking_channel`, `cash_routing_type`, `cash_deposit_type`, `ref_charge_unit`/`ref_charge_frequency`.
 
 **Volet A — RÉSOLU le 22/07** : ajout de `booking_service_extension` (`code`, `label` : accommodation, transport_segment, car_rental) et `booking_service_type_extension` (`service_type_code`, `extension_code`, N-N). Table de liaison choisie plutôt que colonnes booléennes (relation N-N réelle, ajout d'éligibilité = un INSERT sans ALTER, cohérent avec les jonctions du projet). Seed : accommodation→hotel ; transport_segment→flight/train/maritime/transfer ; car_rental→car_rental. `bus` volontairement non mappé (suit la liste backend actuelle) — devient une décision de données. Testé en sandbox : chaîne 16/16, 0 erreur, **291 → 293 tables**, test de violation FK OK, preuve data-driven vérifiée (INSERT ('bus','transport_segment') rend `bus` éligible sans code PHP). Tâche d'implémentation backend dispatchée (transformation de `AssertBookingServiceType`, suppression du const, 3 Handlers, test data-driven).
 
 **Volet B — reporté délibérément (22/07), pas un blocage** : `booking_charge_type` (23 valeurs pilotant taxe/marge/remise/prix de base/commission/assurance…) doit recevoir une colonne `category_code` → référentiel `booking_charge_category`. Granularité des catégories et 6 valeurs ambiguës (`accommodation` maritime, `meal`, `transfer_fee`, `vehicle_transport`, `supplement`, `refund`) à trancher sur les **branches réelles** du code backend, pas dans l'abstrait. Le chat Backend a explicitement refusé de répondre maintenant : `booking_charge` n'a encore aucun code écrit dessus, donc répondre aujourd'hui reviendrait à deviner des catégories à l'avance plutôt qu'à partir de vrais cas — exactement ce que ce garde-fou cherche à éviter. **Condition de reprise : quand `booking_charge` sera implémenté côté backend et que les vraies distinctions se présenteront dans le code** (le Backend a dit qu'il referait remonter le point explicitement à ce moment). Pas d'échéance fixée, pas d'action pilote à prévoir d'ici là. Les attributs de comportement (`sign`, `affects_taxable_base`, etc.) iront sur la catégorie (une place), différés jusqu'à confirmation. Baker en même temps → 293 → 294 tables.
 
-## 62. reglement_post_transfer() : signature p_currency incohérente avec le schéma — ✅ RÉSOLU le 22/07/2026 (2 points de conception tranchés en même temps)
+## 62. settlement_post_transfer() : signature p_currency incohérente avec le schéma — ✅ RÉSOLU le 22/07/2026 (2 points de conception tranchés en même temps)
 
 **Origine** : 2e point remonté par le chat DEV Backend Symfony, en préparant l'implémentation du grand livre Règlements.
 
-**Problème 1 — corrigé** : `reglement_post_transfer(p_currency BIGINT, ...)` restait sur l'ancienne convention `currency_id` alors que le diff `reglements-currency_code-fix.diff` (17/07) avait déjà migré toutes les colonnes en `VARCHAR(3) REFERENCES ref_currency(code)`, y compris le corps de la fonction (les `INSERT ... currency_code ...`). Seule la déclaration du paramètre avait été oubliée par le diff. Corrigé en `p_currency VARCHAR(3)`. Testé en sandbox par appel réel de la fonction (2 comptes, code devise `'TND'`) : `reglement_transfer` + les 2 jambes de `reglement_ledger_entry` (signe opposé, même `transfer_id`) + `reglement_balance` (mis à jour par le trigger) tous corrects.
+**Problème 1 — corrigé** : `settlement_post_transfer(p_currency BIGINT, ...)` restait sur l'ancienne convention `currency_id` alors que le diff `reglements-currency_code-fix.diff` (17/07) avait déjà migré toutes les colonnes en `VARCHAR(3) REFERENCES ref_currency(code)`, y compris le corps de la fonction (les `INSERT ... currency_code ...`). Seule la déclaration du paramètre avait été oubliée par le diff. Corrigé en `p_currency VARCHAR(3)`. Testé en sandbox par appel réel de la fonction (2 comptes, code devise `'TND'`) : `settlement_transfer` + les 2 jambes de `settlement_ledger_entry` (signe opposé, même `transfer_id`) + `settlement_balance` (mis à jour par le trigger) tous corrects.
 
-**Problème 2 — tranché, pas d'action de code** : la note du schéma sur la concurrence de `reglement_balance` mélangeait correction et performance. Clarification apportée : le trigger (`INSERT ... ON CONFLICT ... DO UPDATE`) est une opération **atomique** (verrou de ligne PostgreSQL implicite) — aucune race condition de type lost-update, contrairement à un `SELECT` + `UPDATE` séparés côté application sans `FOR UPDATE`. Le seul risque réel est une **contention** (attente de verrou) si plusieurs transactions postent simultanément sur le même triplet `(party_account_id, party_role, currency_code)` — des comptes différents ne se bloquent jamais entre eux. Volume réel confirmé par l'utilisateur : **100-200 règlements/jour max**, très en dessous de tout seuil de contention réaliste. Décision (méthode du projet : pas d'optimisation sans preuve réelle) : garder le trigger en V1, ne pas anticiper le passage à `SELECT FOR UPDATE` applicatif. Seuil de bascule documenté dans le commentaire du schéma pour référence future (changement radical de volume, ou confirmation par monitoring de lock wait).
+**Problème 2 — tranché, pas d'action de code** : la note du schéma sur la concurrence de `settlement_balance` mélangeait correction et performance. Clarification apportée : le trigger (`INSERT ... ON CONFLICT ... DO UPDATE`) est une opération **atomique** (verrou de ligne PostgreSQL implicite) — aucune race condition de type lost-update, contrairement à un `SELECT` + `UPDATE` séparés côté application sans `FOR UPDATE`. Le seul risque réel est une **contention** (attente de verrou) si plusieurs transactions postent simultanément sur le même triplet `(party_account_id, party_role, currency_code)` — des comptes différents ne se bloquent jamais entre eux. Volume réel confirmé par l'utilisateur : **100-200 règlements/jour max**, très en dessous de tout seuil de contention réaliste. Décision (méthode du projet : pas d'optimisation sans preuve réelle) : garder le trigger en V1, ne pas anticiper le passage à `SELECT FOR UPDATE` applicatif. Seuil de bascule documenté dans le commentaire du schéma pour référence future (changement radical de volume, ou confirmation par monitoring de lock wait).
 
-**Problème 3 — clarifié, pas un problème réel** : l'intention du Backend (posting `obligation`/`instrument_credit` fait par INSERT Domain-contrôlé en attendant les fonctions SQL dédiées) était déjà l'intention documentée dans la note 3 du schéma (« non incluses en V1... à définir avec l'équipe dev »). Deux corrections de forme apportées : (a) nommage unifié — le commentaire de `reglement_ledger_entry` citait `reglement_post_instrument_credit`, la note 3 citait `reglement_post_credit` ; `reglement_post_credit` retenu (cohérent avec `reglement_post_transfer`/`reglement_post_reversal`) ; (b) la règle « jamais d'INSERT direct depuis l'application » sur `reglement_ledger_entry` est reformulée pour clarifier qu'elle interdit le contournement des invariants (signe, cohérence des jambes), pas l'absence de fonction SQL — un INSERT Domain-contrôlé respectant ces invariants est acceptable tant que la fonction dédiée n'existe pas.
+**Problème 3 — clarifié, pas un problème réel** : l'intention du Backend (posting `obligation`/`instrument_credit` fait par INSERT Domain-contrôlé en attendant les fonctions SQL dédiées) était déjà l'intention documentée dans la note 3 du schéma (« non incluses en V1... à définir avec l'équipe dev »). Deux corrections de forme apportées : (a) nommage unifié — le commentaire de `settlement_ledger_entry` citait `settlement_post_instrument_credit`, la note 3 citait `settlement_post_credit` ; `settlement_post_credit` retenu (cohérent avec `settlement_post_transfer`/`settlement_post_reversal`) ; (b) la règle « jamais d'INSERT direct depuis l'application » sur `settlement_ledger_entry` est reformulée pour clarifier qu'elle interdit le contournement des invariants (signe, cohérence des jambes), pas l'absence de fonction SQL — un INSERT Domain-contrôlé respectant ces invariants est acceptable tant que la fonction dédiée n'existe pas.
 
-**Fichiers modifiés** : `schema-reglements-v1.sql` uniquement (correction de bug + 2 clarifications de commentaires, aucune table ajoutée/retirée — total reste 293).
+**Fichiers modifiés** : `schema-settlement-v1.sql` uniquement (correction de bug + 2 clarifications de commentaires, aucune table ajoutée/retirée — total reste 293).
 
 ## 63. Doublon d'encaissement d'instrument en caisse (même session) — ✅ RÉSOLU le 23/07/2026
 
 **Origine** : remontée du chat DEV Backend Symfony, en cadrant `cash_receive_instrument()`.
 
-**Constat** : `cash_movement.instrument_id` n'avait aucune contrainte d'unicité — rien n'empêchait qu'un même `reglement_instrument.id` soit encaissé deux fois dans la même `cash_session`. Confirmé par l'utilisateur : un doublon dans la même session n'est jamais légitime. À distinguer d'un même instrument réapparaissant dans une session **différente** (ex. migration chèque agent → caissier central → banque via `cash_validate_session`), qui est un mouvement de vie légitime, pas un doublon.
+**Constat** : `cash_movement.instrument_id` n'avait aucune contrainte d'unicité — rien n'empêchait qu'un même `settlement_instrument.id` soit encaissé deux fois dans la même `cash_session`. Confirmé par l'utilisateur : un doublon dans la même session n'est jamais légitime. À distinguer d'un même instrument réapparaissant dans une session **différente** (ex. migration chèque agent → caissier central → banque via `cash_validate_session`), qui est un mouvement de vie légitime, pas un doublon.
 
 **Résolu** : index unique partiel ajouté sur `cash_movement` :
 ```sql

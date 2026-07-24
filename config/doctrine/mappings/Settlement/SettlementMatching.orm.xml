@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!-- Lettrage soft (unmatch). Ne mute jamais ledger/balance. -->
+    <entity name="App\Modules\Settlement\Domain\Entity\SettlementMatching" table="settlement_matching">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="publicId" type="public_id" column="public_id" unique="true" nullable="false"/>
+        <field name="debitEntryId" type="bigint" column="debit_entry_id" nullable="false"/>
+        <field name="creditEntryId" type="bigint" column="credit_entry_id" nullable="false"/>
+        <field name="matchedAmountMinor" type="bigint" column="matched_amount_minor" nullable="false"/>
+        <field name="isAutomatic" type="boolean" column="is_automatic" nullable="false"/>
+        <field name="matchGroup" type="string" column="match_group" length="30" nullable="true"/>
+        <field name="matchedAt" type="datetimetz_immutable" column="matched_at" nullable="false"/>
+        <field name="matchedBy" type="bigint" column="matched_by" nullable="true"/>
+        <field name="unmatchedAt" type="datetimetz_immutable" column="unmatched_at" nullable="true"/>
+        <field name="unmatchedBy" type="bigint" column="unmatched_by" nullable="true"/>
+    </entity>
+</doctrine-mapping>

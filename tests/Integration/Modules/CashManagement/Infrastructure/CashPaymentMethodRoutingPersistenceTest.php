@@ -13,7 +13,7 @@ use App\Modules\CashManagement\Domain\Exception\InvalidCashPaymentMethodRoutingE
 use App\Modules\CashManagement\Domain\Repository\CashPaymentMethodRoutingRepositoryInterface;
 use App\Modules\CashManagement\Domain\Repository\CashRoutingTypeRepositoryInterface;
 use App\Modules\CashManagement\Domain\ValueObject\InstrumentTrackingMode;
-use App\Modules\Reglements\Domain\Repository\ReglementPaymentMethodRepositoryInterface;
+use App\Modules\Settlement\Domain\Repository\SettlementPaymentMethodRepositoryInterface;
 use App\Shared\Domain\ValueObject\PublicId;
 use App\Shared\Infrastructure\Persistence\UnitOfWork;
 use Doctrine\DBAL\Connection;
@@ -46,7 +46,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
     private Connection $connection;
 
-    private ReglementPaymentMethodRepositoryInterface $paymentMethodRepository;
+    private SettlementPaymentMethodRepositoryInterface $paymentMethodRepository;
 
     private CashRoutingTypeRepositoryInterface $routingTypeRepository;
 
@@ -73,8 +73,8 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         $connection = $container->get(Connection::class);
         $this->connection = $connection;
 
-        /** @var ReglementPaymentMethodRepositoryInterface $paymentMethodRepository */
-        $paymentMethodRepository = $container->get(ReglementPaymentMethodRepositoryInterface::class);
+        /** @var SettlementPaymentMethodRepositoryInterface $paymentMethodRepository */
+        $paymentMethodRepository = $container->get(SettlementPaymentMethodRepositoryInterface::class);
         $this->paymentMethodRepository = $paymentMethodRepository;
 
         /** @var CashRoutingTypeRepositoryInterface $routingTypeRepository */
@@ -125,7 +125,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         $rawCount = $this->connection->fetchOne(
             'SELECT COUNT(*)
              FROM cash_payment_method_routing r
-             JOIN reglement_payment_method m ON m.id = r.payment_method_id
+             JOIN settlement_payment_method m ON m.id = r.payment_method_id
              WHERE m.code IN (\'AD\',\'CB\',\'PE\',\'C\',\'LC\',\'E\',\'PC\',\'V\',\'VE\',\'RC\',\'RI\')',
         );
         self::assertNotFalse($rawCount);
@@ -278,7 +278,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
     private function insertTemporaryPaymentMethod(string $code): int
     {
         $this->connection->executeStatement(
-            'INSERT INTO reglement_payment_method (public_id, code, label, is_cash_like, is_active)
+            'INSERT INTO settlement_payment_method (public_id, code, label, is_cash_like, is_active)
              VALUES (:public_id, :code, :label, false, true)
              ON CONFLICT (code) DO NOTHING',
             [
@@ -289,7 +289,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         );
 
         $id = $this->connection->fetchOne(
-            'SELECT id FROM reglement_payment_method WHERE code = :code',
+            'SELECT id FROM settlement_payment_method WHERE code = :code',
             ['code' => $code],
         );
         self::assertNotFalse($id);

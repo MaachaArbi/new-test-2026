@@ -8,7 +8,7 @@ use App\Modules\CashManagement\Domain\Exception\InvalidCashPaymentMethodRoutingE
 use App\Modules\CashManagement\Domain\ValueObject\InstrumentTrackingMode;
 
 /**
- * Extension 1-1 de reglement_payment_method — routing Cash Management.
+ * Extension 1-1 de settlement_payment_method — routing Cash Management.
  *
  * PK = payment_method_id (FK, strategy NONE). Mutable (UPDATE métier autorisé).
  * Contrainte croisée Domain = chk_routing_tracking_consistency :

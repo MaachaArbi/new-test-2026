@@ -6,8 +6,8 @@
 -- Dépend de  : schema-party-account-v1.sql, schema-ref-common.sql,
 --              schema-ref-static-v1.sql (ref_country),
 --              schema-booking-v1.sql (lu, jamais modifié),
---              schema-reglements-v1.sql (invoice_id/credit_note_id branchés),
---              schema-pointvente-v1.sql (FK reporting nullable)
+--              schema-settlement-v1.sql (invoice_id/credit_note_id branchés),
+--              schema-sales_point-v1.sql (FK reporting nullable)
 -- Ordre      : 9ème script à exécuter (après ref-static)
 --
 -- PRINCIPE   : un seul grand livre (Règlements). Facturation ne recalcule
@@ -152,7 +152,7 @@ CREATE TABLE invoicing_invoice (
     currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
     country_id         BIGINT NOT NULL REFERENCES ref_country(id), -- pays fiscal de référence (détermine les taux applicables)
 
-    pointvente_id      BIGINT REFERENCES pointvente(id), -- reporting uniquement, jamais utilisé pour la numérotation
+    sales_point_id      BIGINT REFERENCES sales_point(id), -- reporting uniquement, jamais utilisé pour la numérotation
 
     status_code        VARCHAR(20) NOT NULL DEFAULT 'draft'
                           CHECK (status_code IN ('draft', 'validated', 'cancelled')),
@@ -333,7 +333,7 @@ CREATE TABLE invoicing_credit_note (
     party_account_id    BIGINT NOT NULL REFERENCES party_account(id),
     currency_code       VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
     country_id          BIGINT NOT NULL REFERENCES ref_country(id),
-    pointvente_id       BIGINT REFERENCES pointvente(id),
+    sales_point_id       BIGINT REFERENCES sales_point(id),
 
     -- Homogénéité stricte : un avoir est SOIT généré automatiquement
     -- depuis une annulation Booking (lignes ancrées uniquement), SOIT créé
@@ -700,13 +700,13 @@ BEGIN
         validated_at = now(), validated_by = p_by
     WHERE id = p_invoice_id;
 
-    SELECT id INTO v_type_id FROM reglement_entry_type WHERE code = 'obligation_vente';
+    SELECT id INTO v_type_id FROM settlement_entry_type WHERE code = 'obligation_vente';
 
     FOR r IN
         SELECT id, amount_minor FROM invoicing_invoice_line
         WHERE invoice_id = p_invoice_id AND origin_type = 'free'
     LOOP
-        INSERT INTO reglement_ledger_entry
+        INSERT INTO settlement_ledger_entry
             (party_account_id, party_role, currency_code, entry_type_id,
              amount_minor, effective_date, invoice_id, memo, created_by)
         VALUES
@@ -751,9 +751,9 @@ BEGIN
         validated_at = now(), validated_by = p_by
     WHERE id = p_credit_note_id;
 
-    SELECT id INTO v_type_id FROM reglement_entry_type WHERE code = 'reversal';
+    SELECT id INTO v_type_id FROM settlement_entry_type WHERE code = 'reversal';
 
-    INSERT INTO reglement_ledger_entry
+    INSERT INTO settlement_ledger_entry
         (party_account_id, party_role, currency_code, entry_type_id,
          amount_minor, effective_date, credit_note_id, memo, created_by)
     VALUES
@@ -812,12 +812,12 @@ COMMENT ON VIEW invoicing_supplier_reconciliation IS
 -- existante, ne rouvre pas la conception figée de Règlements, formalise
 -- juste les FK laissées non déclarées volontairement à l'époque).
 -- ============================================================
-ALTER TABLE reglement_ledger_entry
-    ADD CONSTRAINT fk_reglement_ledger_entry_invoice
+ALTER TABLE settlement_ledger_entry
+    ADD CONSTRAINT fk_settlement_ledger_entry_invoice
     FOREIGN KEY (invoice_id) REFERENCES invoicing_invoice(id);
 
-ALTER TABLE reglement_ledger_entry
-    ADD CONSTRAINT fk_reglement_ledger_entry_credit_note
+ALTER TABLE settlement_ledger_entry
+    ADD CONSTRAINT fk_settlement_ledger_entry_credit_note
     FOREIGN KEY (credit_note_id) REFERENCES invoicing_credit_note(id);
 
 -- ============================================================
@@ -832,8 +832,8 @@ ALTER TABLE reglement_ledger_entry
 -- 1. invoicing_post_credit_from_cancellation() : signature à définir avec
 --    l'équipe dev (dépend de l'API applicative Booking/Symfony), suit le
 --    même patron que invoicing_post_validate_credit_note ci-dessus.
---    Non implémentée en V1 pour la même raison que reglement_post_obligation()
---    dans schema-reglements-v1.sql.
+--    Non implémentée en V1 pour la même raison que settlement_post_obligation()
+--    dans schema-settlement-v1.sql.
 --
 -- 2. total_stamp_minor recalculé par l'application à chaque mutation de
 --    ligne (jamais par trigger) — cohérent avec ADR-002 (booking_charge).

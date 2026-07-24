@@ -2,8 +2,8 @@
 
 **Statut** : Cadrage validé (avant schéma SQL) — 18 juillet 2026
 **Remplace** : `ost_com_facture`, `ost_com_facture_ligne`, `ost_com_facture_fournisseur`, `ost_com_facture_fournisseur_ligne`
-**Convention de nommage** : préfixe `invoicing_`, cohérent avec `party_`/`core_`/`ref_`/`booking_`/`reglement_`/`cash_`/`pointvente_`
-**Dépend de** : `party_` (tiers), `ref_` (devises, pays), `booking_` (`booking_payer_split`, `booking_settlement`, `booking_charge`), `reglement_` (crochets `invoice_id`/`credit_note_id`), `pointvente_` (FK reporting nullable)
+**Convention de nommage** : préfixe `invoicing_`, cohérent avec `party_`/`core_`/`ref_`/`booking_`/`settlement_`/`cash_`/`sales_point_`
+**Dépend de** : `party_` (tiers), `ref_` (devises, pays), `booking_` (`booking_payer_split`, `booking_settlement`, `booking_charge`), `settlement_` (crochets `invoice_id`/`credit_note_id`), `sales_point_` (FK reporting nullable)
 **Hors périmètre explicite** : recalcul de solde (Règlements reste l'unique autorité), lien facture client ↔ facture fournisseur (cas GNV, voir `sujets-reportes.md`), FODEC côté vente (n'existe que côté fournisseur)
 
 ---
@@ -59,7 +59,7 @@ Une ligne libre **pose une écriture nouvelle** dans le grand livre au moment de
 - **Séquence globale unique de l'agence**, pas par bureau/point de vente (le legacy n'avait pas cette distinction, et rien n'impose de la construire pour l'instant).
 - **Remise à zéro chaque année.** Aucun format d'affichage imposé légalement en Tunisie — seule la séquentialité stricte compte. Le format de présentation reste configurable côté application.
 - **Seule la validation de la facture consomme un numéro** (pas le brouillon).
-- **Aucun gap toléré**, y compris en cas d'échec technique en cours de transaction (contrainte plus stricte qu'une `SEQUENCE` PostgreSQL classique, qui peut sauter des valeurs sur rollback). Implique un verrouillage explicite du compteur dans la même transaction que l'INSERT de la facture (pattern déjà utilisé dans le projet pour `reglement_balance` via `SELECT ... FOR UPDATE`). À valider par un test de concurrence réel en sandbox avant de considérer le mécanisme fiable — le legacy n'a jamais révélé de problème, mais ça ne prouve pas l'absence de risque à un volume différent.
+- **Aucun gap toléré**, y compris en cas d'échec technique en cours de transaction (contrainte plus stricte qu'une `SEQUENCE` PostgreSQL classique, qui peut sauter des valeurs sur rollback). Implique un verrouillage explicite du compteur dans la même transaction que l'INSERT de la facture (pattern déjà utilisé dans le projet pour `settlement_balance` via `SELECT ... FOR UPDATE`). À valider par un test de concurrence réel en sandbox avant de considérer le mécanisme fiable — le legacy n'a jamais révélé de problème, mais ça ne prouve pas l'absence de risque à un volume différent.
 - **Séquence séparée pour les avoirs**, indépendante de celle des factures.
 - **Annulation d'une facture validée** : avoir obligatoire, jamais de suppression ou d'annulation à blanc.
 
@@ -133,7 +133,7 @@ Objectif explicite : système de facturation utilisable même hors tourisme (auc
 
 ## Point de vente
 
-`facturation_invoice.pointvente_id` (et l'équivalent côté facture fournisseur si pertinent), FK nullable vers `pointvente`. Reporting uniquement (quel point de vente a émis quelle facture), sans dépendance sur la numérotation (globale, pas par point de vente) ni sur le branchement `pointvente_id` côté Booking (action différée, notée séparément dans le backlog Booking).
+`facturation_invoice.sales_point_id` (et l'équivalent côté facture fournisseur si pertinent), FK nullable vers `sales_point`. Reporting uniquement (quel point de vente a émis quelle facture), sans dépendance sur la numérotation (globale, pas par point de vente) ni sur le branchement `sales_point_id` côté Booking (action différée, notée séparément dans le backlog Booking).
 
 ---
 
@@ -150,11 +150,11 @@ Objectif explicite : système de facturation utilisable même hors tourisme (auc
 
 ### ↔ Règlements
 
-Facturation ne recalcule jamais un solde — Règlements reste l'unique source de vérité. Les crochets `invoice_id`/`credit_note_id` de `reglement_ledger_entry` ne sont utilisés que dans deux cas :
+Facturation ne recalcule jamais un solde — Règlements reste l'unique source de vérité. Les crochets `invoice_id`/`credit_note_id` de `settlement_ledger_entry` ne sont utilisés que dans deux cas :
 - **Ligne libre** (vente ou achat) : la validation de la facture/avoir pose une écriture nouvelle avec `invoice_id`/`credit_note_id` comme origine (aucun `booking_id` disponible).
 - **Avoir sur ligne ancrée** : la contre-passation générée par l'annulation Booking porte `credit_note_id` en plus de son origine `booking_id`/`reverses_entry_id`, pour tracer le document fiscal associé.
 
-Une ligne ancrée simple (facturation "normale" d'une réservation déjà obligée dans le grand livre) ne touche **jamais** le grand livre — c'est une lecture pure, cohérent avec le principe déjà figé dans `modele-conceptuel-reglements.md`.
+Une ligne ancrée simple (facturation "normale" d'une réservation déjà obligée dans le grand livre) ne touche **jamais** le grand livre — c'est une lecture pure, cohérent avec le principe déjà figé dans `modele-conceptuel-settlement.md`.
 
 ### ← Cash Management
 

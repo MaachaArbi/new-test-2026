@@ -16,7 +16,7 @@ final class CashReceiveInstrumentNotFoundException extends DomainException
     public static function forId(int $instrumentId): self
     {
         return new self(
-            sprintf('Reglement instrument %d was not found for cash receive.', $instrumentId),
+            sprintf('Settlement instrument %d was not found for cash receive.', $instrumentId),
             ['instrument_id' => $instrumentId],
         );
     }

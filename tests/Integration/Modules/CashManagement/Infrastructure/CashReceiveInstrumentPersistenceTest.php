@@ -21,13 +21,13 @@ use App\Modules\CashManagement\Domain\Repository\CashPaymentMethodRoutingReposit
 use App\Modules\CashManagement\Domain\Repository\CashSessionRepositoryInterface;
 use App\Modules\Party\Domain\Entity\PartyAccount;
 use App\Modules\Party\Domain\Repository\PartyAccountRepositoryInterface;
-use App\Modules\Reglements\Application\CreateReglementInstrument\CreateReglementInstrumentCommand;
-use App\Modules\Reglements\Application\CreateReglementInstrument\CreateReglementInstrumentHandler;
-use App\Modules\Reglements\Application\ReglementReferentialValidator;
-use App\Modules\Reglements\Application\TransitionReglementInstrumentStatus\TransitionReglementInstrumentStatusCommand;
-use App\Modules\Reglements\Application\TransitionReglementInstrumentStatus\TransitionReglementInstrumentStatusHandler;
-use App\Modules\Reglements\Domain\Repository\ReglementInstrumentRepositoryInterface;
-use App\Modules\Reglements\Domain\Repository\ReglementPaymentMethodRepositoryInterface;
+use App\Modules\Settlement\Application\CreateSettlementInstrument\CreateSettlementInstrumentCommand;
+use App\Modules\Settlement\Application\CreateSettlementInstrument\CreateSettlementInstrumentHandler;
+use App\Modules\Settlement\Application\SettlementReferentialValidator;
+use App\Modules\Settlement\Application\TransitionSettlementInstrumentStatus\TransitionSettlementInstrumentStatusCommand;
+use App\Modules\Settlement\Application\TransitionSettlementInstrumentStatus\TransitionSettlementInstrumentStatusHandler;
+use App\Modules\Settlement\Domain\Repository\SettlementInstrumentRepositoryInterface;
+use App\Modules\Settlement\Domain\Repository\SettlementPaymentMethodRepositoryInterface;
 use App\Shared\Domain\ValueObject\Email;
 use App\Shared\Infrastructure\Persistence\UnitOfWork;
 use Doctrine\DBAL\Connection;
@@ -46,9 +46,9 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
 
     private CashSessionRepositoryInterface $sessionRepository;
 
-    private ReglementInstrumentRepositoryInterface $instrumentRepository;
+    private SettlementInstrumentRepositoryInterface $instrumentRepository;
 
-    private ReglementPaymentMethodRepositoryInterface $paymentMethodRepository;
+    private SettlementPaymentMethodRepositoryInterface $paymentMethodRepository;
 
     private CashPaymentMethodRoutingRepositoryInterface $routingRepository;
 
@@ -58,9 +58,9 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
 
     private ReceiveCashInstrumentHandler $receiveHandler;
 
-    private CreateReglementInstrumentHandler $createInstrumentHandler;
+    private CreateSettlementInstrumentHandler $createInstrumentHandler;
 
-    private TransitionReglementInstrumentStatusHandler $transitionHandler;
+    private TransitionSettlementInstrumentStatusHandler $transitionHandler;
 
     protected function setUp(): void
     {
@@ -83,12 +83,12 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
         $sessionRepository = $container->get(CashSessionRepositoryInterface::class);
         $this->sessionRepository = $sessionRepository;
 
-        /** @var ReglementInstrumentRepositoryInterface $instrumentRepository */
-        $instrumentRepository = $container->get(ReglementInstrumentRepositoryInterface::class);
+        /** @var SettlementInstrumentRepositoryInterface $instrumentRepository */
+        $instrumentRepository = $container->get(SettlementInstrumentRepositoryInterface::class);
         $this->instrumentRepository = $instrumentRepository;
 
-        /** @var ReglementPaymentMethodRepositoryInterface $paymentMethodRepository */
-        $paymentMethodRepository = $container->get(ReglementPaymentMethodRepositoryInterface::class);
+        /** @var SettlementPaymentMethodRepositoryInterface $paymentMethodRepository */
+        $paymentMethodRepository = $container->get(SettlementPaymentMethodRepositoryInterface::class);
         $this->paymentMethodRepository = $paymentMethodRepository;
 
         /** @var CashPaymentMethodRoutingRepositoryInterface $routingRepository */
@@ -104,12 +104,12 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
             $this->instrumentRepository,
             $this->routingRepository,
         );
-        $this->createInstrumentHandler = new CreateReglementInstrumentHandler(
+        $this->createInstrumentHandler = new CreateSettlementInstrumentHandler(
             $this->instrumentRepository,
-            new ReglementReferentialValidator($this->connection),
+            new SettlementReferentialValidator($this->connection),
             $this->unitOfWork,
         );
-        $this->transitionHandler = new TransitionReglementInstrumentStatusHandler(
+        $this->transitionHandler = new TransitionSettlementInstrumentStatusHandler(
             $this->instrumentRepository,
             $this->unitOfWork,
         );
@@ -311,7 +311,7 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
     private function assertInactiveStatusRejected(string $status): void
     {
         $fixture = $this->seedOpenSessionWithCaisseInstrument(1_500);
-        ($this->transitionHandler)(new TransitionReglementInstrumentStatusCommand(
+        ($this->transitionHandler)(new TransitionSettlementInstrumentStatusCommand(
             instrumentId: $fixture['instrumentId'],
             statusCode: $status,
             reason: 'test',
@@ -358,7 +358,7 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
 
     private function createInstrument(int $partyAccountId, int $paymentMethodId, int $amountMinor): int
     {
-        $instrument = ($this->createInstrumentHandler)(new CreateReglementInstrumentCommand(
+        $instrument = ($this->createInstrumentHandler)(new CreateSettlementInstrumentCommand(
             partyAccountId: $partyAccountId,
             partyRole: 'client',
             currencyCode: 'TND',
@@ -373,12 +373,12 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
     {
         $code = 'T'.strtoupper(bin2hex(random_bytes(1))); // 3 chars — VARCHAR(4)
         $this->connection->executeStatement(
-            'INSERT INTO reglement_payment_method (code, label, is_active)
+            'INSERT INTO settlement_payment_method (code, label, is_active)
              VALUES (:code, :label, true)',
             ['code' => $code, 'label' => 'Temp no routing '.$code],
         );
         $id = $this->connection->fetchOne(
-            'SELECT id FROM reglement_payment_method WHERE code = :code',
+            'SELECT id FROM settlement_payment_method WHERE code = :code',
             ['code' => $code],
         );
         self::assertNotFalse($id);

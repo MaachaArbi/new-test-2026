@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+      Référentiel seedé — lecture seule Application.
+      Colonne non mappée : created_at.
+    -->
+    <entity name="App\Modules\Settlement\Domain\Entity\SettlementPaymentMethod" table="settlement_payment_method">
+        <id name="id" type="bigint" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <field name="publicId" type="public_id" column="public_id" unique="true" nullable="false"/>
+        <field name="code" type="string" column="code" length="4" unique="true" nullable="false"/>
+        <field name="label" type="string" column="label" length="60" nullable="false"/>
+        <field name="isCashLike" type="boolean" column="is_cash_like" nullable="false"/>
+        <field name="isActive" type="boolean" column="is_active" nullable="false"/>
+    </entity>
+</doctrine-mapping>

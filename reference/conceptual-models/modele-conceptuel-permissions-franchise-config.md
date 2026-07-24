@@ -23,7 +23,7 @@ Deux tables décomposent ce que le legacy confondait dans un seul "rôle Symfony
 
 ## Franchises
 
-Décision centrale : une franchise est un `party_account` à part entière (`party_role='franchise'`, nouveau rôle distinct malgré la ressemblance avec `fournisseur`/B2B — le sens de la dette est inversé, justifie un rôle séparé). Extension `party_account_franchise` (1-1, même pattern que `party_account_office`). `pointvente.office_account_id` peut désormais référencer soit un bureau interne (`party_account_office`) soit une franchise (`party_account_franchise`) — règle applicative élargie, **aucun changement de colonne**. Le grand livre reste toujours porté par le `party_account` franchise, jamais par `pointvente` (principe non modifié).
+Décision centrale : une franchise est un `party_account` à part entière (`party_role='franchise'`, nouveau rôle distinct malgré la ressemblance avec `fournisseur`/B2B — le sens de la dette est inversé, justifie un rôle séparé). Extension `party_account_franchise` (1-1, même pattern que `party_account_office`). `sales_point.office_account_id` peut désormais référencer soit un bureau interne (`party_account_office`) soit une franchise (`party_account_franchise`) — règle applicative élargie, **aucun changement de colonne**. Le grand livre reste toujours porté par le `party_account` franchise, jamais par `sales_point` (principe non modifié).
 
 La délégation d'administration (auto-gestion utilisateurs/marges/infos) est un mécanisme générique partagé avec les agences B2B distributrices (`parent_account_id`), pas un mécanisme franchise-spécifique — c'est le RBAC + `is_delegable` qui la porte, aucune table dédiée.
 

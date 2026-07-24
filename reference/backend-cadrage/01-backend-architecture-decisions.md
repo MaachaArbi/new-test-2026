@@ -44,7 +44,7 @@ L'ancienne réflexion posait systématiquement tout l'outillage DDD tactique (Ag
 
 **Décision** :
 - **Value Objects** : gardés, notamment pour tout ce qui a un écho direct côté BDD (`Money` encapsulant `ref_currency.minor_unit`, formats validés par CHECK). Faible coût, forte valeur.
-- **Une interface Repository par agrégat racine ayant un vrai cycle de vie propre** (`party_account`, `booking`, `reglement_ledger_entry`...) : gardée. Pas systématique sur des tables satellites simples.
+- **Une interface Repository par agrégat racine ayant un vrai cycle de vie propre** (`party_account`, `booking`, `settlement_ledger_entry`...) : gardée. Pas systématique sur des tables satellites simples.
 - **Domain Events inter-modules** : **posés seulement quand un besoin réel de découplage apparaît**, pas en préventif sur chaque création d'entité. Tant que la communication reste séquentielle (un Handler appelle directement un Repository d'un autre module via une interface partagée), pas besoin de la mécanique événementielle complète.
 
 *Point discuté en session, pas encore éprouvé sur du code réel — à réévaluer au premier module concret si ça s'avère insuffisant.*
@@ -140,7 +140,7 @@ Le vrai legacy Symfony 2.8 est toujours en production. La question de la coexist
 
 **Statut** : ✅ CONFIRMÉ, aligné sur la BDD
 
-`booking_` est partitionné par date dès la conception. **Attention** : `reglement_ledger_entry` est explicitement **non partitionné en V1** côté BDD (à réévaluer au-delà de 10M lignes) — ne pas supposer un partitionnement uniforme sur toutes les tables volumineuses.
+`booking_` est partitionné par date dès la conception. **Attention** : `settlement_ledger_entry` est explicitement **non partitionné en V1** côté BDD (à réévaluer au-delà de 10M lignes) — ne pas supposer un partitionnement uniforme sur toutes les tables volumineuses.
 
 ---
 
@@ -171,9 +171,9 @@ Détail complet : `02-backend-module-index.md`.
 **Statut** : ✅ CONFIRMÉ
 
 - Nom de table Doctrine = nom de table BDD réel, préfixe module inclus (`party_account`, pas `accounts`)
-- Namespace module Symfony aligné sur le préfixe BDD (`Modules/Party/`, `Modules/Booking/`, `Modules/Reglements/`...)
+- Namespace module Symfony aligné sur le préfixe BDD (`Modules/Party/`, `Modules/Booking/`, `Modules/Settlement/`...)
 - Pas de traduction/renommage générique anglais côté ORM qui masquerait le préfixe métier
-- Exception connue et assumée côté BDD : `reglement_` et `pointvente_` restent en français (dette documentée, renommage volontairement différé — le backend en hérite tel quel, ne pas "corriger" unilatéralement côté code)
+- Exception connue et assumée côté BDD : `settlement_` et `sales_point_` restent en français (dette documentée, renommage volontairement différé — le backend en hérite tel quel, ne pas "corriger" unilatéralement côté code)
 
 ---
 

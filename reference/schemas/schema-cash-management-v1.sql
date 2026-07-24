@@ -5,14 +5,14 @@
 -- Statut     : V1.0 — 17 juillet 2026
 -- Dépend de  : schema-ref-common.sql, schema-party-account-v1.sql,
 --              schema-booking-v1.sql (non référencé directement),
---              schema-reglements-v1.sql (CORRIGÉ : currency_id -> currency_code,
+--              schema-settlement-v1.sql (CORRIGÉ : currency_id -> currency_code,
 --              voir diff livré séparément — appliquer AVANT ce script)
--- Ordre      : 6ème script à exécuter (après reglements_)
+-- Ordre      : 6ème script à exécuter (après settlement_)
 --
 -- PRINCIPE   : deux journaux jumeaux append-only (sessions de caisse, comptes
 --              bancaires), reliés par le bordereau de remise et la
 --              transmission externe. Cash Management ne recalcule JAMAIS un
---              solde tiers — il consomme reglement_payment_method via la
+--              solde tiers — il consomme settlement_payment_method via la
 --              table compagnon cash_payment_method_routing pour savoir où
 --              router physiquement chaque pièce, sans aucun code en dur.
 --              La garde physique d''une pièce est dérivée (cash_instrument_
@@ -20,7 +20,7 @@
 -- ============================================================================
 
 -- ============================================================
--- 1. ROUTING — table compagnon de reglement_payment_method
+-- 1. ROUTING — table compagnon de settlement_payment_method
 --    Décision : conception neuve, aucun mode de règlement en dur.
 -- ============================================================
 
@@ -45,7 +45,7 @@ INSERT INTO cash_routing_type (code, label) VALUES
     ('aucun',                'Scriptural pur, hors périmètre Cash Management');
 
 CREATE TABLE cash_payment_method_routing (
-    payment_method_id        BIGINT PRIMARY KEY REFERENCES reglement_payment_method(id),
+    payment_method_id        BIGINT PRIMARY KEY REFERENCES settlement_payment_method(id),
     routing_type_code        VARCHAR(20) NOT NULL REFERENCES cash_routing_type(code),
 
     -- Fongibilité : 'individual' = la pièce garde son lien vers l'instrument/
@@ -77,9 +77,9 @@ CREATE TABLE cash_payment_method_routing (
 );
 
 COMMENT ON TABLE cash_payment_method_routing IS
-'Extension 1-1 de reglement_payment_method (même pattern que party_account_office
+'Extension 1-1 de settlement_payment_method (même pattern que party_account_office
  sur party_account). Créer un nouveau mode de règlement = ajouter une ligne
- reglement_payment_method + une ligne ici. Le moteur ne connaît plus aucun
+ settlement_payment_method + une ligne ici. Le moteur ne connaît plus aucun
  code de mode de règlement en dur : il lit routing_type_code et
  instrument_tracking_mode. is_cash_like (Règlements) répond à "transite
  physiquement" ; routing_type_code répond à "vers où" — les deux peuvent
@@ -93,24 +93,24 @@ CREATE TRIGGER trg_cash_payment_method_routing_updated_at BEFORE UPDATE ON cash_
 -- Seed initial, aligné sur les modes de règlement Règlements V1.0.
 -- Choix marqués (*) à confirmer avec l'utilisateur — posés par défaut raisonnable.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'aucun', 'not_applicable', false FROM reglement_payment_method WHERE code IN ('AD','CB','PE');
+SELECT id, 'aucun', 'not_applicable', false FROM settlement_payment_method WHERE code IN ('AD','CB','PE');
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'caisse', 'individual', false FROM reglement_payment_method WHERE code IN ('C','LC');
+SELECT id, 'caisse', 'individual', false FROM settlement_payment_method WHERE code IN ('C','LC');
 -- Espèce : individual + isolation stricte activée (décision actée pour ce déploiement).
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'caisse', 'individual', true FROM reglement_payment_method WHERE code = 'E';
+SELECT id, 'caisse', 'individual', true FROM settlement_payment_method WHERE code = 'E';
 -- Bon de commande / prise en charge : transmission externe vers l'amicale émettrice.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'transmission_externe', 'individual', false FROM reglement_payment_method WHERE code = 'PC';
+SELECT id, 'transmission_externe', 'individual', false FROM settlement_payment_method WHERE code = 'PC';
 -- (*) Virement : jamais de caisse, mais doit être rapproché sur relevé -> banque_directe.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'banque_directe', 'individual', false FROM reglement_payment_method WHERE code = 'V';
+SELECT id, 'banque_directe', 'individual', false FROM settlement_payment_method WHERE code = 'V';
 -- (*) Versement espèce : le client dépose lui-même au guichet bancaire, jamais notre caisse.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'banque_directe', 'individual', false FROM reglement_payment_method WHERE code = 'VE';
+SELECT id, 'banque_directe', 'individual', false FROM settlement_payment_method WHERE code = 'VE';
 -- (*) Retenue à la source, Ristourne : déduction scripturale, pas de flux physique.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'aucun', 'not_applicable', false FROM reglement_payment_method WHERE code IN ('RC','RI');
+SELECT id, 'aucun', 'not_applicable', false FROM settlement_payment_method WHERE code IN ('RC','RI');
 
 -- ============================================================
 -- 2. RÉFÉRENTIEL DES TYPES DE MOUVEMENT DE CAISSE
@@ -127,7 +127,7 @@ CREATE TABLE cash_movement_type (
 );
 
 COMMENT ON TABLE cash_movement_type IS
-'Table de référence, jamais ENUM (cohérent avec reglement_payment_method).
+'Table de référence, jamais ENUM (cohérent avec settlement_payment_method).
  normal_sign est informatif pour le reporting ; amount_minor sur cash_movement
  est toujours signé et fait foi (une contre-passation peut porter un type
  "normalement crédit" avec un montant négatif).';
@@ -208,7 +208,7 @@ CREATE TABLE cash_movement (
     amount_minor               BIGINT NOT NULL CHECK (amount_minor <> 0),
 
     -- NULL = mouvement libre/interne (frais, transfert, conversion, écart).
-    instrument_id                BIGINT REFERENCES reglement_instrument(id),
+    instrument_id                BIGINT REFERENCES settlement_instrument(id),
 
     effective_date                 DATE NOT NULL DEFAULT CURRENT_DATE,
     memo                              TEXT,
@@ -231,7 +231,7 @@ CREATE INDEX idx_cash_movement_instrument ON cash_movement(instrument_id) WHERE 
 CREATE UNIQUE INDEX uq_cash_movement_public_id ON cash_movement(public_id);
 
 -- Invariant structurel (réouverture 23/07/2026, retour chat Backend) : un même
--- reglement_instrument ne peut être encaissé deux fois dans LA MÊME session --
+-- settlement_instrument ne peut être encaissé deux fois dans LA MÊME session --
 -- jamais légitime (doublon de saisie). Volontairement scopé à session_id : un
 -- même instrument peut réapparaître dans une session DIFFÉRENTE (ex. migration
 -- chèque agent -> caissier central -> banque via cash_validate_session), ce
@@ -270,7 +270,7 @@ CREATE TRIGGER trg_cash_movement_guard
     FOR EACH ROW EXECUTE FUNCTION cash_movement_guard();
 
 -- ============================================================
--- 5. SOLDE DE SESSION — snapshot maintenu en continu (pattern reglement_balance)
+-- 5. SOLDE DE SESSION — snapshot maintenu en continu (pattern settlement_balance)
 -- ============================================================
 
 CREATE TABLE cash_session_balance (
@@ -358,7 +358,7 @@ BEGIN
                    (SELECT SUM(a.amount_minor) FROM cash_cash_allocation a WHERE a.source_movement_id = cm.id), 0
                ) AS available
         FROM cash_movement cm
-        JOIN reglement_instrument ri            ON ri.id = cm.instrument_id
+        JOIN settlement_instrument ri            ON ri.id = cm.instrument_id
         JOIN cash_payment_method_routing cpmr   ON cpmr.payment_method_id = ri.payment_method_id
         WHERE cm.session_id = p_session_id
           AND cm.currency_code = p_currency_code
@@ -399,7 +399,7 @@ DECLARE
     v_type_id BIGINT; v_currency VARCHAR(3); v_amount BIGINT; v_movement_id BIGINT;
 BEGIN
     SELECT currency_code, amount_minor INTO v_currency, v_amount
-    FROM reglement_instrument WHERE id = p_instrument_id;
+    FROM settlement_instrument WHERE id = p_instrument_id;
     IF v_currency IS NULL THEN
         RAISE EXCEPTION 'Instrument % introuvable', p_instrument_id;
     END IF;
@@ -658,7 +658,7 @@ BEGIN
     FOR r IN
         SELECT cm.currency_code, SUM(cm.amount_minor) AS total
         FROM cash_movement cm
-        LEFT JOIN reglement_instrument ri          ON ri.id = cm.instrument_id
+        LEFT JOIN settlement_instrument ri          ON ri.id = cm.instrument_id
         LEFT JOIN cash_payment_method_routing cpmr ON cpmr.payment_method_id = ri.payment_method_id
         WHERE cm.session_id = p_session_id
           AND (cm.instrument_id IS NULL OR cpmr.instrument_tracking_mode = 'aggregate')
@@ -679,7 +679,7 @@ BEGIN
         SELECT cm.id AS movement_id, cm.currency_code, cm.instrument_id,
                cm.amount_minor - COALESCE(SUM(a.amount_minor), 0) AS remaining
         FROM cash_movement cm
-        JOIN reglement_instrument ri          ON ri.id = cm.instrument_id
+        JOIN settlement_instrument ri          ON ri.id = cm.instrument_id
         JOIN cash_payment_method_routing cpmr ON cpmr.payment_method_id = ri.payment_method_id
         LEFT JOIN cash_cash_allocation a      ON a.source_movement_id = cm.id
         WHERE cm.session_id = p_session_id
@@ -709,7 +709,7 @@ COMMENT ON FUNCTION cash_validate_session IS
 -- ============================================================
 
 CREATE TABLE cash_instrument_location (
-    instrument_id     BIGINT PRIMARY KEY REFERENCES reglement_instrument(id),
+    instrument_id     BIGINT PRIMARY KEY REFERENCES settlement_instrument(id),
     location_type     VARCHAR(20) NOT NULL CHECK (location_type IN ('session','deposit','bank_account','transmission')),
     session_id        BIGINT REFERENCES cash_session(id),
     deposit_id        BIGINT,  -- FK ajoutée après création de cash_deposit
@@ -834,7 +834,7 @@ CREATE TABLE cash_bank_transaction (
 
     amount_minor                  BIGINT NOT NULL CHECK (amount_minor <> 0),  -- signé
 
-    instrument_id                   BIGINT REFERENCES reglement_instrument(id),  -- règlement direct (V, VE...)
+    instrument_id                   BIGINT REFERENCES settlement_instrument(id),  -- règlement direct (V, VE...)
     deposit_id                        BIGINT,  -- FK ajoutée après création de cash_deposit
 
     value_date                          DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -853,7 +853,7 @@ COMMENT ON TABLE cash_bank_transaction IS
  (deposit_id), d''un règlement atterrissant directement en banque sans caisse
  (instrument_id, ex: virement reçu), ou d''un fait purement bancaire sans
  contrepartie amont (frais, agios — origine non obligatoire, à la différence
- de reglement_ledger_entry).';
+ de settlement_ledger_entry).';
 
 CREATE INDEX idx_cash_bank_transaction_account ON cash_bank_transaction(bank_account_id, value_date, id);
 CREATE UNIQUE INDEX uq_cash_bank_transaction_public_id ON cash_bank_transaction(public_id);
@@ -896,7 +896,7 @@ RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE
     v_currency VARCHAR(3); v_account_currency VARCHAR(3); v_amount BIGINT; v_type_id BIGINT; v_id BIGINT;
 BEGIN
-    SELECT currency_code, amount_minor INTO v_currency, v_amount FROM reglement_instrument WHERE id = p_instrument_id;
+    SELECT currency_code, amount_minor INTO v_currency, v_amount FROM settlement_instrument WHERE id = p_instrument_id;
     SELECT currency_code INTO v_account_currency FROM cash_bank_account WHERE id = p_bank_account_id;
     IF v_currency IS DISTINCT FROM v_account_currency THEN
         RAISE EXCEPTION 'Devise instrument (%) <> devise compte bancaire (%)', v_currency, v_account_currency;
@@ -1077,7 +1077,7 @@ CREATE TABLE cash_external_transmission_item (
     accompanying_invoice_id          BIGINT,  -- crochet futur Facturation, lu par id
     status_code                        VARCHAR(20) NOT NULL DEFAULT 'transmitted'
                                           CHECK (status_code IN ('transmitted','settled','disputed')),
-    settlement_instrument_id             BIGINT REFERENCES reglement_instrument(id),  -- la pièce de remboursement reçue
+    settlement_instrument_id             BIGINT REFERENCES settlement_instrument(id),  -- la pièce de remboursement reçue
     created_at                             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -1189,7 +1189,7 @@ COMMENT ON FUNCTION cash_reverse_movement IS
 -- à la main. C'est un FAIT ÉCONOMIQUE NOUVEAU (pas une correction de saisie),
 -- donc PAS de reversal_of_movement_id : la pièce a bien été reçue, c'est son
 -- sort qui a changé après coup. Le re-débit du client lui-même est du
--- ressort de Règlements (reglement_instrument.status_code -> 'returned'),
+-- ressort de Règlements (settlement_instrument.status_code -> 'returned'),
 -- appelé séparément par l'application dans la même transaction logique.
 CREATE OR REPLACE FUNCTION cash_handle_instrument_return(p_instrument_id BIGINT, p_target_session_id BIGINT, p_reason TEXT, p_by BIGINT)
 RETURNS TABLE(result_type VARCHAR, result_id BIGINT) LANGUAGE plpgsql AS $$
@@ -1203,7 +1203,7 @@ BEGIN
         RAISE EXCEPTION 'Aucune localisation connue pour l''instrument % (jamais entré dans Cash Management ?)', p_instrument_id;
     END IF;
 
-    SELECT currency_code, amount_minor INTO v_currency, v_amount FROM reglement_instrument WHERE id = p_instrument_id;
+    SELECT currency_code, amount_minor INTO v_currency, v_amount FROM settlement_instrument WHERE id = p_instrument_id;
 
     IF v_loc.location_type = 'session' THEN
         SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'sortie_instrument_retourne';

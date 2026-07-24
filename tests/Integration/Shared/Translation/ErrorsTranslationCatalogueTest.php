@@ -53,25 +53,25 @@ use App\Modules\Party\Domain\Exception\PartyAccountGroupMembershipNotFoundExcept
 use App\Modules\Party\Domain\Exception\PartyAccountNoChangesException;
 use App\Modules\Party\Domain\Exception\PartyAccountNotFoundException;
 use App\Modules\Party\Domain\Exception\PartyAccountRoleAssignmentNotFoundException;
-use App\Modules\Reglements\Domain\Exception\InvalidReglementInstrumentException;
-use App\Modules\Reglements\Domain\Exception\InvalidReglementInstrumentPartyRoleException;
-use App\Modules\Reglements\Domain\Exception\InvalidReglementInstrumentStatusException;
-use App\Modules\Reglements\Domain\Exception\InvalidReglementLedgerEntryException;
-use App\Modules\Reglements\Domain\Exception\InvalidReglementMatchingException;
-use App\Modules\Reglements\Domain\Exception\InvalidReglementTransferAmountException;
-use App\Modules\Reglements\Domain\Exception\InvalidReglementTransferPartyRoleException;
-use App\Modules\Reglements\Domain\Exception\ReglementEntryTypeNotFoundException;
-use App\Modules\Reglements\Domain\Exception\ReglementInstrumentNotActiveException;
-use App\Modules\Reglements\Domain\Exception\ReglementInstrumentNotFoundException;
-use App\Modules\Reglements\Domain\Exception\ReglementInstrumentStatusUnchangedException;
-use App\Modules\Reglements\Domain\Exception\ReglementLedgerEntryNotFoundException;
-use App\Modules\Reglements\Domain\Exception\ReglementMatchingBookMismatchException;
-use App\Modules\Reglements\Domain\Exception\ReglementMatchingExceedsCreditException;
-use App\Modules\Reglements\Domain\Exception\ReglementMatchingExceedsDebitException;
-use App\Modules\Reglements\Domain\Exception\ReglementMatchingNotFoundException;
-use App\Modules\Reglements\Domain\Exception\ReglementPaymentMethodInactiveException;
-use App\Modules\Reglements\Domain\Exception\ReglementTransferPostingFailedException;
-use App\Modules\Reglements\Domain\Exception\ReglementUnknownCurrencyException;
+use App\Modules\Settlement\Domain\Exception\InvalidSettlementInstrumentException;
+use App\Modules\Settlement\Domain\Exception\InvalidSettlementInstrumentPartyRoleException;
+use App\Modules\Settlement\Domain\Exception\InvalidSettlementInstrumentStatusException;
+use App\Modules\Settlement\Domain\Exception\InvalidSettlementLedgerEntryException;
+use App\Modules\Settlement\Domain\Exception\InvalidSettlementMatchingException;
+use App\Modules\Settlement\Domain\Exception\InvalidSettlementTransferAmountException;
+use App\Modules\Settlement\Domain\Exception\InvalidSettlementTransferPartyRoleException;
+use App\Modules\Settlement\Domain\Exception\SettlementEntryTypeNotFoundException;
+use App\Modules\Settlement\Domain\Exception\SettlementInstrumentNotActiveException;
+use App\Modules\Settlement\Domain\Exception\SettlementInstrumentNotFoundException;
+use App\Modules\Settlement\Domain\Exception\SettlementInstrumentStatusUnchangedException;
+use App\Modules\Settlement\Domain\Exception\SettlementLedgerEntryNotFoundException;
+use App\Modules\Settlement\Domain\Exception\SettlementMatchingBookMismatchException;
+use App\Modules\Settlement\Domain\Exception\SettlementMatchingExceedsCreditException;
+use App\Modules\Settlement\Domain\Exception\SettlementMatchingExceedsDebitException;
+use App\Modules\Settlement\Domain\Exception\SettlementMatchingNotFoundException;
+use App\Modules\Settlement\Domain\Exception\SettlementPaymentMethodInactiveException;
+use App\Modules\Settlement\Domain\Exception\SettlementTransferPostingFailedException;
+use App\Modules\Settlement\Domain\Exception\SettlementUnknownCurrencyException;
 use App\Shared\Domain\Exception\CurrencyMismatchException;
 use App\Shared\Domain\Exception\InvalidCurrencyCodeException;
 use App\Shared\Domain\Exception\InvalidEmailException;
@@ -165,25 +165,25 @@ final class ErrorsTranslationCatalogueTest extends KernelTestCase
                 new \DateTimeImmutable('2026-08-10'),
                 new \DateTimeImmutable('2026-08-01'),
             )->errorCode(),
-            InvalidReglementInstrumentException::amountMustBePositive(0)->errorCode(),
-            ReglementInstrumentNotFoundException::forId(999_999_987)->errorCode(),
-            ReglementInstrumentStatusUnchangedException::forStatus('active')->errorCode(),
-            ReglementPaymentMethodInactiveException::forId(999_999_986)->errorCode(),
-            ReglementUnknownCurrencyException::forCode('ZZZ')->errorCode(),
-            InvalidReglementLedgerEntryException::amountMustBeNonZero(0)->errorCode(),
-            ReglementEntryTypeNotFoundException::forCode('missing')->errorCode(),
-            InvalidReglementTransferAmountException::amountMustBePositive(0)->errorCode(),
-            InvalidReglementTransferPartyRoleException::forValue('nope')->errorCode(),
-            ReglementTransferPostingFailedException::emptyResult()->errorCode(),
-            InvalidReglementInstrumentPartyRoleException::forValue('nope')->errorCode(),
-            InvalidReglementInstrumentStatusException::forValue('nope')->errorCode(),
-            ReglementInstrumentNotActiveException::forId(1, 'cancelled')->errorCode(),
-            ReglementLedgerEntryNotFoundException::forId(999_999_980)->errorCode(),
-            InvalidReglementMatchingException::amountMustBePositive(0)->errorCode(),
-            ReglementMatchingNotFoundException::forId(999_999_979)->errorCode(),
-            ReglementMatchingBookMismatchException::forEntries(1, 2)->errorCode(),
-            ReglementMatchingExceedsCreditException::forCredit(1, 100, 50, 60)->errorCode(),
-            ReglementMatchingExceedsDebitException::forDebit(1, 100, 50, 60)->errorCode(),
+            InvalidSettlementInstrumentException::amountMustBePositive(0)->errorCode(),
+            SettlementInstrumentNotFoundException::forId(999_999_987)->errorCode(),
+            SettlementInstrumentStatusUnchangedException::forStatus('active')->errorCode(),
+            SettlementPaymentMethodInactiveException::forId(999_999_986)->errorCode(),
+            SettlementUnknownCurrencyException::forCode('ZZZ')->errorCode(),
+            InvalidSettlementLedgerEntryException::amountMustBeNonZero(0)->errorCode(),
+            SettlementEntryTypeNotFoundException::forCode('missing')->errorCode(),
+            InvalidSettlementTransferAmountException::amountMustBePositive(0)->errorCode(),
+            InvalidSettlementTransferPartyRoleException::forValue('nope')->errorCode(),
+            SettlementTransferPostingFailedException::emptyResult()->errorCode(),
+            InvalidSettlementInstrumentPartyRoleException::forValue('nope')->errorCode(),
+            InvalidSettlementInstrumentStatusException::forValue('nope')->errorCode(),
+            SettlementInstrumentNotActiveException::forId(1, 'cancelled')->errorCode(),
+            SettlementLedgerEntryNotFoundException::forId(999_999_980)->errorCode(),
+            InvalidSettlementMatchingException::amountMustBePositive(0)->errorCode(),
+            SettlementMatchingNotFoundException::forId(999_999_979)->errorCode(),
+            SettlementMatchingBookMismatchException::forEntries(1, 2)->errorCode(),
+            SettlementMatchingExceedsCreditException::forCredit(1, 100, 50, 60)->errorCode(),
+            SettlementMatchingExceedsDebitException::forDebit(1, 100, 50, 60)->errorCode(),
             CashRoutingTypeNotFoundException::forCode('missing')->errorCode(),
             CashPaymentMethodRoutingNotFoundException::forPaymentMethodId(999_999_978)->errorCode(),
             CashPaymentMethodRoutingAlreadyExistsException::forPaymentMethodId(1)->errorCode(),

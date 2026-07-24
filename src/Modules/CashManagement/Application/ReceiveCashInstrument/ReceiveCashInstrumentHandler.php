@@ -13,8 +13,8 @@ use App\Modules\CashManagement\Domain\Exception\CashSessionNotOpenException;
 use App\Modules\CashManagement\Domain\Repository\CashPaymentMethodRoutingRepositoryInterface;
 use App\Modules\CashManagement\Domain\Repository\CashSessionRepositoryInterface;
 use App\Modules\CashManagement\Domain\ValueObject\CashSessionStatus;
-use App\Modules\Reglements\Domain\Repository\ReglementInstrumentRepositoryInterface;
-use App\Modules\Reglements\Domain\ValueObject\ReglementInstrumentStatus;
+use App\Modules\Settlement\Domain\Repository\SettlementInstrumentRepositoryInterface;
+use App\Modules\Settlement\Domain\ValueObject\SettlementInstrumentStatus;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DbalException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -31,7 +31,7 @@ final class ReceiveCashInstrumentHandler
     public function __construct(
         private readonly Connection $connection,
         private readonly CashSessionRepositoryInterface $sessionRepository,
-        private readonly ReglementInstrumentRepositoryInterface $instrumentRepository,
+        private readonly SettlementInstrumentRepositoryInterface $instrumentRepository,
         private readonly CashPaymentMethodRoutingRepositoryInterface $routingRepository,
     ) {
     }
@@ -59,7 +59,7 @@ final class ReceiveCashInstrumentHandler
         if ($instrument === null) {
             throw CashReceiveInstrumentNotFoundException::forId($command->instrumentId);
         }
-        if ($instrument->statusCode() !== ReglementInstrumentStatus::Active) {
+        if ($instrument->statusCode() !== SettlementInstrumentStatus::Active) {
             throw CashReceiveInstrumentNotActiveException::forId(
                 $command->instrumentId,
                 $instrument->statusCode()->value,

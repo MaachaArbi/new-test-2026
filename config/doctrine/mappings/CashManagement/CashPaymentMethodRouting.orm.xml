@@ -5,7 +5,7 @@
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
 
     <!--
-      Extension 1-1 : PK = payment_method_id (aussi FK reglement_payment_method).
+      Extension 1-1 : PK = payment_method_id (aussi FK settlement_payment_method).
       strategy NONE = identifiant assigné par l'application.
       Colonnes non mappées : created_at, updated_at (trigger SQL).
     -->

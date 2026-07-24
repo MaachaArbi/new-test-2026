@@ -11,15 +11,15 @@ use App\Modules\CashManagement\Domain\Exception\InvalidCashPaymentMethodRoutingE
 use App\Modules\CashManagement\Domain\Repository\CashPaymentMethodRoutingRepositoryInterface;
 use App\Modules\CashManagement\Domain\Repository\CashRoutingTypeRepositoryInterface;
 use App\Modules\CashManagement\Domain\ValueObject\InstrumentTrackingMode;
-use App\Modules\Reglements\Domain\Exception\ReglementPaymentMethodInactiveException;
-use App\Modules\Reglements\Domain\Repository\ReglementPaymentMethodRepositoryInterface;
+use App\Modules\Settlement\Domain\Exception\SettlementPaymentMethodInactiveException;
+use App\Modules\Settlement\Domain\Repository\SettlementPaymentMethodRepositoryInterface;
 use App\Shared\Infrastructure\Persistence\UnitOfWork;
 use ValueError;
 
 final class CreateCashPaymentMethodRoutingHandler
 {
     public function __construct(
-        private readonly ReglementPaymentMethodRepositoryInterface $paymentMethodRepository,
+        private readonly SettlementPaymentMethodRepositoryInterface $paymentMethodRepository,
         private readonly CashRoutingTypeRepositoryInterface $routingTypeRepository,
         private readonly CashPaymentMethodRoutingRepositoryInterface $routingRepository,
         private readonly UnitOfWork $unitOfWork,
@@ -30,7 +30,7 @@ final class CreateCashPaymentMethodRoutingHandler
     {
         $paymentMethod = $this->paymentMethodRepository->findById($command->paymentMethodId);
         if ($paymentMethod === null) {
-            throw ReglementPaymentMethodInactiveException::forId($command->paymentMethodId);
+            throw SettlementPaymentMethodInactiveException::forId($command->paymentMethodId);
         }
 
         if ($this->routingTypeRepository->findByCode($command->routingTypeCode) === null) {

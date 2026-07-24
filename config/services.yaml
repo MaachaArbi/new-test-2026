@@ -108,28 +108,28 @@ services:
         alias: App\Modules\Booking\Infrastructure\Persistence\DoctrineBookingPayerSplitRepository
         public: true
 
-    App\Modules\Reglements\Domain\Repository\ReglementPaymentMethodRepositoryInterface:
-        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementPaymentMethodRepository
+    App\Modules\Settlement\Domain\Repository\SettlementPaymentMethodRepositoryInterface:
+        alias: App\Modules\Settlement\Infrastructure\Persistence\DoctrineSettlementPaymentMethodRepository
         public: true
 
-    App\Modules\Reglements\Domain\Repository\ReglementEntryTypeRepositoryInterface:
-        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementEntryTypeRepository
+    App\Modules\Settlement\Domain\Repository\SettlementEntryTypeRepositoryInterface:
+        alias: App\Modules\Settlement\Infrastructure\Persistence\DoctrineSettlementEntryTypeRepository
         public: true
 
-    App\Modules\Reglements\Domain\Repository\ReglementInstrumentRepositoryInterface:
-        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementInstrumentRepository
+    App\Modules\Settlement\Domain\Repository\SettlementInstrumentRepositoryInterface:
+        alias: App\Modules\Settlement\Infrastructure\Persistence\DoctrineSettlementInstrumentRepository
         public: true
 
-    App\Modules\Reglements\Domain\Repository\ReglementLedgerEntryRepositoryInterface:
-        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementLedgerEntryRepository
+    App\Modules\Settlement\Domain\Repository\SettlementLedgerEntryRepositoryInterface:
+        alias: App\Modules\Settlement\Infrastructure\Persistence\DoctrineSettlementLedgerEntryRepository
         public: true
 
-    App\Modules\Reglements\Domain\Repository\ReglementMatchingRepositoryInterface:
-        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementMatchingRepository
+    App\Modules\Settlement\Domain\Repository\SettlementMatchingRepositoryInterface:
+        alias: App\Modules\Settlement\Infrastructure\Persistence\DoctrineSettlementMatchingRepository
         public: true
 
-    App\Modules\Reglements\Domain\Repository\ReglementBalanceRepositoryInterface:
-        alias: App\Modules\Reglements\Infrastructure\Persistence\DoctrineReglementBalanceRepository
+    App\Modules\Settlement\Domain\Repository\SettlementBalanceRepositoryInterface:
+        alias: App\Modules\Settlement\Infrastructure\Persistence\DoctrineSettlementBalanceRepository
         public: true
 
     App\Modules\CashManagement\Domain\Repository\CashRoutingTypeRepositoryInterface:

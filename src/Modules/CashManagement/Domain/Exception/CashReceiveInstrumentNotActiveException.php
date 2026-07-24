@@ -16,7 +16,7 @@ final class CashReceiveInstrumentNotActiveException extends DomainException
     public static function forId(int $instrumentId, string $statusCode): self
     {
         return new self(
-            sprintf('Reglement instrument %d is not active (status=%s).', $instrumentId, $statusCode),
+            sprintf('Settlement instrument %d is not active (status=%s).', $instrumentId, $statusCode),
             ['instrument_id' => $instrumentId, 'status_code' => $statusCode],
         );
     }

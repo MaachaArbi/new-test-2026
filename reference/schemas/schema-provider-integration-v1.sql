@@ -138,7 +138,7 @@ INSERT INTO provider_connection_deactivation_reason (code, label, sort_order) VA
 -- office_account_id NULLABLE : une connexion peut être globale (partagée
 -- par toute l'installation, cas par défaut d'un client à bureau unique)
 -- ou spécifique à un party_account_office -- confirmé : jamais au niveau
--- pointvente (simple lieu, pas d'identité économique), jamais au niveau
+-- sales_point (simple lieu, pas d'identité économique), jamais au niveau
 -- franchise (party_account_franchise) -- uniquement party_account_office.
 -- ------------------------------------------------------------
 CREATE TABLE provider_connection (

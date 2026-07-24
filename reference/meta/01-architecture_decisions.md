@@ -1022,9 +1022,9 @@ Remplace UUID v4 comme clé primaire unique (ADR-008) par ce pattern à deux col
 
 Cette section documente les corrections de défauts trouvés après coup dans un module déjà figé, distinctes des ADR ci-dessus (qui documentent des choix délibérés, pas des bugs).
 
-### Correctif 2026-07-17 : `reglement_*.currency_id` → `currency_code`
+### Correctif 2026-07-17 : `settlement_*.currency_id` → `currency_code`
 
 **Trouvé pendant** : conception de Cash Management (vérification croisée des FK devise avant construction).
-**Problème** : `schema-reglements-v1.sql` référençait `ref_currency(id)` à 4 endroits (colonnes) + 13 usages dérivés (index, fonctions, commentaires) — or `ref_currency` a pour clé primaire `code VARCHAR(3)`, sans colonne `id`. Le script ne pouvait pas s'exécuter contre `ref_currency` tel que réellement défini dans `schema-ref-common.sql`. Party et Booking utilisaient déjà la bonne convention (`currency_code VARCHAR(3) REFERENCES ref_currency(code)`) — le défaut était isolé à Règlements.
+**Problème** : `schema-settlement-v1.sql` référençait `ref_currency(id)` à 4 endroits (colonnes) + 13 usages dérivés (index, fonctions, commentaires) — or `ref_currency` a pour clé primaire `code VARCHAR(3)`, sans colonne `id`. Le script ne pouvait pas s'exécuter contre `ref_currency` tel que réellement défini dans `schema-ref-common.sql`. Party et Booking utilisaient déjà la bonne convention (`currency_code VARCHAR(3) REFERENCES ref_currency(code)`) — le défaut était isolé à Règlements.
 **Correction** : renommage systématique `currency_id`→`currency_code`, type `BIGINT`→`VARCHAR(3)`, FK vers `ref_currency(code)`. Aucun impact sur la logique métier (le grand livre reste scopé par `(party_account_id, party_role, currency_code)`) — uniquement le nom/type de la colonne devise, aligné sur la convention déjà en place partout ailleurs.
-**Statut** : appliqué et testé sur PostgreSQL 16 réel (les 5 scripts s'exécutent proprement dans l'ordre). Diff exact fourni : `reglements-currency_code-fix.diff`. À répercuter dans le fichier `schema-reglements-v1.sql` du Project.
+**Statut** : appliqué et testé sur PostgreSQL 16 réel (les 5 scripts s'exécutent proprement dans l'ordre). Diff exact fourni : `reglements-currency_code-fix.diff`. À répercuter dans le fichier `schema-settlement-v1.sql` du Project.

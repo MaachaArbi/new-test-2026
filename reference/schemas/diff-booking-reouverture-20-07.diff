@@ -12,7 +12,7 @@
 +--                   (+ FK réelle ref_accommodation.id), processing_status_code
 +--                   (+log_activity), booking_payment.collected_by_account_id,
 +--                   correction définitions booking_channel.api_in/api_out,
-+--                   ajout service 'guide', FK pointvente_id/pointvente_paiement_id.
++--                   ajout service 'guide', FK sales_point_id/sales_point_payment_id.
 +-- Date           : 2026-07-20
  -- Réfs           : ADR-002 (logique métier hors DB, jamais de trigger
  --                   métier), ADR-005 (soft delete sélectif), ADR-010
@@ -24,7 +24,7 @@
 +--                   ref_accommodation (module ref_static, schema-ref-static-v1.sql)
 +--                   — À EXÉCUTER AVANT, nouveau depuis le 20/07 (FK réelle
 +--                   sur booking_accommodation_detail)
-+--                   pointvente (module pointvente_, schema-pointvente-v1.sql)
++--                   sales_point (module sales_point_, schema-sales_point-v1.sql)
 +--                   — À EXÉCUTER AVANT, nouveau depuis le 20/07 (FK sur booking)
 +--                   log_entity_type (module log_, schema-log-v1.sql) — pas
 +--                   de FK SQL réelle (entity_id applicatif), mais l'entrée
@@ -126,8 +126,8 @@
 +    -- Points de vente (ajout 20/07, sujets-reportes.md §3/§30) -- deux
 +    -- rôles distincts pouvant pointer vers des sites différents : où la
 +    -- vente a été faite, où le client vient/doit payer.
-+    pointvente_id                                                                      BIGINT REFERENCES pointvente(id),
-+    pointvente_paiement_id                                                             BIGINT REFERENCES pointvente(id),
++    sales_point_id                                                                      BIGINT REFERENCES sales_point(id),
++    sales_point_payment_id                                                             BIGINT REFERENCES sales_point(id),
 +
      created_at                                                           TIMESTAMPTZ NOT NULL DEFAULT now(),
      updated_at                                                             TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -137,8 +137,8 @@
  CREATE INDEX idx_booking_origin ON booking(origin_booking_id) WHERE origin_booking_id IS NOT NULL;
  CREATE INDEX idx_booking_disputed ON booking(id) WHERE is_disputed = true;
 +CREATE INDEX idx_booking_processing_status ON booking(processing_status_code) WHERE processing_status_code IS NOT NULL;
-+CREATE INDEX idx_booking_pointvente ON booking(pointvente_id) WHERE pointvente_id IS NOT NULL;
-+CREATE INDEX idx_booking_pointvente_paiement ON booking(pointvente_paiement_id) WHERE pointvente_paiement_id IS NOT NULL;
++CREATE INDEX idx_booking_sales_point ON booking(sales_point_id) WHERE sales_point_id IS NOT NULL;
++CREATE INDEX idx_booking_sales_point_payment ON booking(sales_point_payment_id) WHERE sales_point_payment_id IS NOT NULL;
  
  CREATE TRIGGER trg_booking_updated_at BEFORE UPDATE ON booking
      FOR EACH ROW EXECUTE FUNCTION set_updated_at();

@@ -31,10 +31,10 @@ final class ExceptionListener implements EventSubscriberInterface
         'party_account_group_member.membership_not_found',
         'booking.not_found',
         'booking_cancellation_policy.not_found',
-        'reglement_instrument.not_found',
-        'reglement_matching.not_found',
-        'reglement_ledger_entry.not_found',
-        'reglement_entry_type.not_found',
+        'settlement_instrument.not_found',
+        'settlement_matching.not_found',
+        'settlement_ledger_entry.not_found',
+        'settlement_entry_type.not_found',
     ];
 
     /** @var list<string> */
@@ -51,10 +51,10 @@ final class ExceptionListener implements EventSubscriberInterface
         'booking_cancellation_policy.already_exists',
         'booking_settlement.already_active',
         'booking_payer_split.already_active',
-        'reglement_instrument.status_unchanged',
+        'settlement_instrument.status_unchanged',
         // État ressource incompatible avec l'action (même sémantique que
         // booking.service_type_mismatch).
-        'reglement_instrument.not_active',
+        'settlement_instrument.not_active',
     ];
 
     /** @var list<string> */
@@ -74,19 +74,19 @@ final class ExceptionListener implements EventSubscriberInterface
         'booking_settlement.invalid_rate',
         'booking_settlement.invalid',
         'money.invalid_currency_code',
-        'reglement.unknown_currency',
-        'reglement_instrument.invalid_amount',
-        'reglement_instrument.invalid_party_role',
-        'reglement_instrument.invalid_status',
-        'reglement_payment_method.inactive_or_unknown',
-        'reglement_ledger_entry.invalid',
-        'reglement_matching.invalid',
-        'reglement_matching.book_mismatch',
-        'reglement_matching.exceeds_credit',
-        'reglement_matching.exceeds_debit',
-        'reglement_transfer.invalid_amount',
-        'reglement_transfer.invalid_party_role',
-        'reglement_transfer.posting_failed',
+        'settlement.unknown_currency',
+        'settlement_instrument.invalid_amount',
+        'settlement_instrument.invalid_party_role',
+        'settlement_instrument.invalid_status',
+        'settlement_payment_method.inactive_or_unknown',
+        'settlement_ledger_entry.invalid',
+        'settlement_matching.invalid',
+        'settlement_matching.book_mismatch',
+        'settlement_matching.exceeds_credit',
+        'settlement_matching.exceeds_debit',
+        'settlement_transfer.invalid_amount',
+        'settlement_transfer.invalid_party_role',
+        'settlement_transfer.posting_failed',
     ];
 
     public function __construct(

@@ -29,13 +29,13 @@ CREATE TABLE party_account_franchise (
 COMMENT ON TABLE party_account_franchise IS 'Marque qu''un party_account est une franchise (bureau externe, acteur économique distinct de party_account_office). La commission est calculée par Pricing (rule_nature=commission), pas stockée ici -- cette table ne fait que qualifier le compte.';
 
 -- ============================================================
--- Règle applicative élargie sur pointvente.office_account_id (AUCUN
+-- Règle applicative élargie sur sales_point.office_account_id (AUCUN
 -- changement de colonne -- reste BIGINT REFERENCES party_account(id)) :
 -- peut désormais référencer soit un compte portant party_account_office
 -- (bureau interne), soit un compte portant party_account_franchise
 -- (site de paiement d'une franchise externe). Le grand livre reste
 -- TOUJOURS porté par le party_account franchise lui-même, jamais par
--- pointvente (qui reste volontairement dépourvu de rôle financier --
+-- sales_point (qui reste volontairement dépourvu de rôle financier --
 -- principe non modifié).
 -- ============================================================
-COMMENT ON COLUMN pointvente.office_account_id IS 'Référence un party_account portant SOIT party_account_office (bureau interne), SOIT party_account_franchise (site de paiement d''une franchise externe) -- règle applicative élargie le 20/07/2026, aucun rôle financier sur pointvente dans les deux cas.';
+COMMENT ON COLUMN sales_point.office_account_id IS 'Référence un party_account portant SOIT party_account_office (bureau interne), SOIT party_account_franchise (site de paiement d''une franchise externe) -- règle applicative élargie le 20/07/2026, aucun rôle financier sur sales_point dans les deux cas.';

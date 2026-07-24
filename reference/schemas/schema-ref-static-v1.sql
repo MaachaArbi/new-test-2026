@@ -5,7 +5,7 @@
 --               ici) + ajouts locaux propres au client, selon l'entité.
 -- Version     : 1.0 - figé le 17 juillet 2026
 -- Ordre       : 8ème script à exécuter (après ref_common, party, core,
---               booking, reglements, cash-management, pointvente) —
+--               booking, settlement, cash-management, sales_point) —
 --               dépend uniquement de schema-ref-common.sql (ref_language).
 -- Dépend de   : schema-ref-common.sql (ref_language, étendu — voir
 --               ref-common-static-extension.diff)
@@ -191,7 +191,7 @@ COMMENT ON TABLE ref_city_translation IS 'Nom de la ville par langue, fourni par
 --
 -- >>> LE FUTUR MODULE PROVIDER INTEGRATION DEVRA RÉUTILISER CETTE TABLE PAR
 -- >>> EXTENSION (table compagnon 1-1, même pattern que
--- >>> cash_payment_method_routing sur reglement_payment_method), JAMAIS LA
+-- >>> cash_payment_method_routing sur settlement_payment_method), JAMAIS LA
 -- >>> RECRÉER NI LA DUPLIQUER SOUS UN AUTRE NOM.
 -- ============================================================================
 
