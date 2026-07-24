@@ -146,7 +146,7 @@ CREATE TRIGGER trg_party_account_updated_at BEFORE UPDATE ON party_account
 CREATE TABLE party_account_address (
     id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     account_id   BIGINT NOT NULL REFERENCES party_account(id),
-    address_type VARCHAR(30) NOT NULL DEFAULT 'legal', -- 'legal','billing','delivery','domiciliation','other'
+    address_type VARCHAR(30) NOT NULL, -- 'legal','billing','delivery','domiciliation','other'
     line1        VARCHAR(255) NOT NULL,
     line2        VARCHAR(255),
     city         VARCHAR(100),

@@ -45,7 +45,7 @@ CREATE TABLE core_permission (
     public_id       UUID NOT NULL DEFAULT gen_random_uuid(),
     code            VARCHAR(100) NOT NULL, -- ex: 'crm.customer.create', 'core.user.manage'
     category_code   VARCHAR(50) REFERENCES core_permission_category(code),
-    is_delegable    BOOLEAN NOT NULL DEFAULT true,
+    is_delegable    BOOLEAN NOT NULL DEFAULT false,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by      BIGINT REFERENCES party_account(id)
@@ -350,7 +350,7 @@ COMMENT ON TABLE document_recipient_rule IS 'Destinataires par template et par t
 -- ============================================================
 CREATE TABLE config_application_setting (
     id              SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-    mfa_issuer_name VARCHAR(100) NOT NULL DEFAULT 'MyGo',
+    mfa_issuer_name VARCHAR(100), -- NULLABLE, sans défaut : jamais de nom client/produit en dur (audit défauts 24/07)
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );

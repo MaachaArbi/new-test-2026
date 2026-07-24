@@ -53,7 +53,7 @@ CREATE TABLE cash_payment_method_routing (
     -- perte de traçabilité espèces legacy). 'aggregate' = fondu en un seul
     -- montant par devise (comportement legacy historique). 'not_applicable'
     -- pour routing_type_code='aucun'.
-    instrument_tracking_mode VARCHAR(20) NOT NULL DEFAULT 'not_applicable'
+    instrument_tracking_mode VARCHAR(20) NOT NULL
                                 CHECK (instrument_tracking_mode IN ('individual','aggregate','not_applicable')),
 
     -- Option rare (1 déploiement sur ~100 à ce jour) : l'espèce individuellement

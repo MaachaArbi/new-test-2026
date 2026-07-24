@@ -135,3 +135,39 @@ CREATE TABLE core_mfa_recovery_code (
 CREATE INDEX idx_core_mfa_recovery_code_credential ON core_mfa_recovery_code(credential_id) WHERE used_at IS NULL;
 
 COMMENT ON TABLE core_mfa_recovery_code IS 'Lot de codes de récupération à usage unique, générés à l''activation du MFA, hachés. used_at marque la consommation (jamais de DELETE -- traçabilité).';
+
+-- ============================================================
+-- Garantie EN BASE : mfa_issuer_name (audit valeurs par défaut 24/07)
+-- Dépend de config_application_setting (schema-permissions-config-v1.sql).
+-- ============================================================
+
+-- Trigger A : interdire d'ACTIVER le 2FA sans issuer renseigné
+CREATE OR REPLACE FUNCTION core_mfa_require_issuer() RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM config_application_setting
+                   WHERE id = 1 AND btrim(coalesce(mfa_issuer_name,'')) <> '') THEN
+        RAISE EXCEPTION 'Activation 2FA refusee : config_application_setting.mfa_issuer_name doit etre renseigne au prealable (nom affiche dans l''application d''authentification de l''utilisateur).'
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_core_mfa_require_issuer
+    BEFORE INSERT OR UPDATE OF is_enabled ON core_mfa_totp
+    FOR EACH ROW WHEN (NEW.is_enabled)
+    EXECUTE FUNCTION core_mfa_require_issuer();
+
+-- Trigger B : interdire d'EFFACER l'issuer si des 2FA sont deja actifs
+CREATE OR REPLACE FUNCTION config_protect_mfa_issuer() RETURNS TRIGGER AS $$
+BEGIN
+    IF btrim(coalesce(NEW.mfa_issuer_name,'')) = ''
+       AND EXISTS (SELECT 1 FROM core_mfa_totp WHERE is_enabled) THEN
+        RAISE EXCEPTION 'Effacement refuse : mfa_issuer_name ne peut pas etre vide tant que des utilisateurs ont le 2FA actif.'
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_config_protect_mfa_issuer
+    BEFORE UPDATE OF mfa_issuer_name ON config_application_setting
+    FOR EACH ROW EXECUTE FUNCTION config_protect_mfa_issuer();

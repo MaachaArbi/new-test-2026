@@ -402,7 +402,7 @@ CREATE TABLE booking (
     price_breakdown                                                    JSONB NOT NULL DEFAULT '{}'::jsonb,
 
     -- Canal de création (remplace frontOffice + front_office_xml)
-    channel_code                                                       VARCHAR(30) NOT NULL DEFAULT 'backoffice' REFERENCES booking_channel(code),
+    channel_code                                                       VARCHAR(30) NOT NULL REFERENCES booking_channel(code),
 
     -- Prise en charge -- distinct de created_by : qui a créé n'est pas
     -- forcément qui traite. NULL = "en instance", personne n'a commencé.
@@ -781,7 +781,7 @@ CREATE TABLE booking_payment (
     method             VARCHAR(20) NOT NULL
                            CHECK (method IN ('card', 'cash', 'bank_transfer', 'wallet', 'other')),
     provider_reference VARCHAR(255), -- ex: id transaction Stripe -- idempotence webhook
-    status             VARCHAR(20) NOT NULL DEFAULT 'pending'
+    status             VARCHAR(20) NOT NULL
                            CHECK (status IN ('pending', 'captured', 'failed', 'refunded')),
     paid_at            TIMESTAMPTZ,
 

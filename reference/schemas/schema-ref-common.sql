@@ -60,7 +60,7 @@ CREATE TABLE ref_currency (
     numeric_code CHAR(3),                       -- ISO 4217 numérique
     symbol       VARCHAR(10),                   -- symbole d'affichage (ex: "د.ت", "€", "$")
     oct_code     VARCHAR(50) NOT NULL,           -- code de réconciliation OctaSoft Static Data. Aucun ajout local possible pour cette entité.
-    minor_unit   SMALLINT NOT NULL DEFAULT 2,   -- nombre de décimales (TND=3, EUR/USD=2)
+    minor_unit   SMALLINT NOT NULL,                 -- nombre de décimales (TND=3, EUR/USD=2) — saisie obligatoire, pas de défaut
     is_active    BOOLEAN NOT NULL DEFAULT true,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
