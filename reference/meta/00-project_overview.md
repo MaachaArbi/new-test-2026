@@ -155,7 +155,7 @@ Détail complet : voir `01-architecture_decisions.md` (18 ADR). **Un chat pilote
 2. Contraintes d'intégrité fortes : FK, CHECK, UNIQUE, triggers
 3. Performance : index stratégiques, partitionnement dès le début (`booking` et 3 autres — pg_partman intégré au déploiement, §8)
 4. Audit trail : **✅ construit le 20/07 (module Log transverse — `log_audit` + trigger générique `log_audit_trigger()`, ADR-006), voir `sujets-reportes.md` §48 point 2 (résolu)**
-5. Soft delete : **politique ADR-005 obsolète, ne correspond plus à ce qui a été réellement construit — point ouvert, voir `sujets-reportes.md` §48**
+5. Disparition / suppression : **✅ ADR-005 révisé le 24/07 — quatre régimes** (logique `deleted_at`, contre-passation, désactivation, suppression réelle). Voir `01-architecture_decisions.md` ADR-005 ; clôture `sujets-reportes.md` §48.
 6. Isolation stricte : 1 DB = 1 client (pas de RLS)
 7. Évolutivité : migrations versionnées, rollback possible
 
@@ -165,7 +165,7 @@ Détail complet : voir `01-architecture_decisions.md` (18 ADR). **Un chat pilote
 3. Testing ciblé : 90% Domain / 50% Application / 30% Infrastructure + benchmarks obligatoires
 4. API REST : OpenAPI spec, versioning URL
 5. Performance : Response time P95 < 200ms
-6. Auth/session (JWT/MFA) : **non couvert par `schema-core-identity-v1.sql` à ce jour — point ouvert, voir `sujets-reportes.md` §48**
+6. Auth/session (JWT/MFA) : **✅ résolu** (Auth avancée / `diff-core-auth-avancee.sql`, voir `sujets-reportes.md` §48 point 3)
 
 ### Frontend
 1. Component-based, réutilisabilité maximale

@@ -537,17 +537,17 @@ Stratégie actée par l'utilisateur : sur une période de 2-3 mois, les deux sys
 
 **Effet de bord positif** : ce travail forcera l'implémentation réelle des fonctions de posting Règlements (`settlement_post_obligation` etc.), actuellement documentées comme pattern non implémenté (point 23).
 
-## 48. Trois points identifiés par le chat pilote Backend (19/07/2026) — à traiter, priorité libre
+## 48. Trois points identifiés par le chat pilote Backend (19/07/2026) — ✅ CLOS le 24/07/2026
 
 Analyse du chat "00-Main DEV Backend" (cadrage architecture Symfony), vérifiée et confirmée dans ce chat :
 
-1. **Soft delete incohérent** : `01-architecture_decisions.md` (ADR-005, vieux de 6 mois) dit "soft delete uniquement sur customers/bookings/invoices/payments, hard delete ailleurs". Réalité vérifiée dans les schémas construits : `deleted_at` présent sur `party_account`/`party_account_address`/`party_account_document`, `booking_folder`, `core_credential`, `sales_point` — mais **absent** sur `invoicing_invoice` et `settlement_ledger_entry` (que l'ADR nomme pourtant explicitement "invoices"/"payments"). ADR-005 obsolète, à recadrer par rapport à ce qui a été réellement conçu (le caractère append-only de Règlements rend d'ailleurs le soft delete conceptuellement inadapté à cette table — contre-passation plutôt que suppression).
+1. **Soft delete incohérent — ✅ RÉSOLU le 24/07/2026 (§48-1)** : l'ADR-005 d'origine (soft delete sur customers/bookings/invoices/payments) était faux dans les deux sens. Réécrit en **« Politique de disparition — quatre régimes »** (suppression logique / contre-passation / désactivation / suppression réelle), actionnable pour le Repository générique. Voir `01-architecture_decisions.md` ADR-005 et cadrage backend.
 
 2. **Audit trail décidé sur papier, jamais construit — ✅ RÉSOLU le 20/07/2026** : `01-architecture_decisions.md` (ADR-006, vieux de 6 mois) décidait une table `audit_logs` générique + trigger réutilisable. Construite sous le nom `log_audit` (module transverse `log_`, voir clôture complète §19) dans la réouverture Booking du 20/07, en même temps que `log_activity`. Trigger générique `log_audit_trigger()` testé en sandbox (capture avant/après confirmée sur `INSERT`/`UPDATE`, y compris sur `booking` malgré son partitionnement). `pricing_rule_log` (Pricing, ✅ figé) reste un cas local séparé, non fusionné.
 
 3. **Auth/session (JWT/MFA) — ✅ RÉSOLU (module Permissions/Franchises/Config, 20/07)** : `core_session` (partitionnée, refresh token rotatif), `core_mfa_totp`, `core_mfa_recovery_code`, `core_auth_attempt` (partitionnée, `account_id` nullable) construits et vérifiés en sandbox. Voir `diff-core-auth-avancee.sql` et `modele-conceptuel-permissions-franchise-config.md`. Point 12 ("périmètre `core_`") peut être considéré clos sur ce volet.
 
-**Statut** : point 1 (soft delete) reste ouvert. Point 2 (audit trail/`log_audit`) résolu le 20/07. Point 3 (auth/session) résolu.
+**Statut** : §48 entier clos (points 1–3 résolus).
 
 ## 49. Incohérence `booking_channel.api_in`/`api_out` — ✅ RÉSOLU le 20/07/2026
 

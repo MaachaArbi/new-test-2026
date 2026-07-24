@@ -37,7 +37,7 @@
 
 ## Sujets en attente de décision backend (voir `01-backend-architecture-decisions.md` pour le détail)
 
-- ADR-005 : politique de suppression par table (soft/hard delete)
+- ~~ADR-005 : politique de suppression par table~~ — ✅ résolu le 24/07 (quatre régimes ; Repository générique débloqué)
 - ADR-006 : stratégie d'audit trail
 - ADR-009 : coexistence avec le legacy réel (hors périmètre immédiat)
 - ADR-002bis : niveau de Domain Events (à confirmer sur le premier module réel)

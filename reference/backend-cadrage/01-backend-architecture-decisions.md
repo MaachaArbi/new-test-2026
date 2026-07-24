@@ -67,13 +67,31 @@ Pas de `tenant_id` nulle part, jamais.
 
 ---
 
-## ADR-005 : Politique de suppression (soft/hard delete)
+## ADR-005 : Politique de disparition — quatre régimes
 
-**Statut** : 🟡 EN ATTENTE
+**Statut** : ✅ ACCEPTED (révisé le 24/07/2026 — aligne le cadrage backend sur
+`reference/meta/01-architecture_decisions.md`)
 
-L'ancienne réflexion listait des tables génériques (`customers`, `bookings`...) qui ne correspondent plus au schéma réel (`party_account`, `booking`...). Aucune politique de suppression par table n'a été confirmée côté conception BDD à ce jour.
-**Bloquant pour** : le pattern de Repository générique (`delete()` doit savoir s'il fait un UPDATE deleted_at ou un DELETE réel).
-→ Voir prompt de retour vers le chat DB.
+**Pattern de Repository générique : DÉBLOQUÉ.** `delete()` se déduit sans ambiguïté
+du tableau ci-dessous (et du schéma).
+
+Principe : pas un choix binaire soft/hard delete — quatre régimes selon ce qui casse
+si la ligne disparaît. Détail et justification (y compris pourquoi l'ancienne version
+était fausse) : ADR-005 dans `reference/meta/01-architecture_decisions.md`.
+
+| La table a… | Régime | `delete()` fait… |
+|---|---|---|
+| une colonne `deleted_at` | 1 — suppression logique | `UPDATE deleted_at = now()` |
+| un trigger `guard` / `no_mutation` | 2 — contre-passation | **n'existe pas** (contre-passer) |
+| une colonne `is_active` / `is_disabled` | 3 — désactivation | ne s'applique pas (cas d'usage métier) |
+| aucune des trois | 4 — suppression réelle | `DELETE` |
+
+Cumul `deleted_at` + `is_active`/`is_disabled` : le régime 1 prime pour `delete()` ;
+la désactivation reste une opération distincte.
+
+Régime 1 (5) : `party_account`, `party_account_address`, `party_account_document`,
+`core_credential`, `booking_folder`.
+Régime 2 (3) : `settlement_ledger_entry`, `cash_movement`, `cash_bank_transaction`.
 
 ---
 

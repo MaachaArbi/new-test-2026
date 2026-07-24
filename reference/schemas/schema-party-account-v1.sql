@@ -12,10 +12,11 @@
 --                   dans account_function, party_account_address créée,
 --                   organization_account_id NOT NULL (plus de NULL magique)
 -- Date           : 2026-07-14
--- Réfs           : ADR-010 (PostgreSQL 16), ADR-005 (Soft delete sélectif),
---                   ADR-018 (BIGINT Identity + public_id, précise ADR-008),
---                   Objectifs Must-Have Base de Données (00-project_overview.md :
---                   migrations versionnées, argent en centimes)
+-- Réfs           : ADR-010 (PostgreSQL 16), ADR-005 (Politique de disparition —
+--                   quatre régimes), ADR-018 (BIGINT Identity + public_id,
+--                   précise ADR-008), Objectifs Must-Have Base de Données
+--                   (00-project_overview.md : migrations versionnées, argent
+--                   en centimes)
 -- Dépend de      : core_credential (module core_, voir schema-core-identity-v1.sql)
 --                   ref_language + ref_currency (module ref_, voir schema-ref-common.sql) — À EXÉCUTER EN PREMIER
 -- ============================================================

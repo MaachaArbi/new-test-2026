@@ -15,10 +15,11 @@
 --                   note en fin de fichier).
 -- Date           : 2026-07-19
 -- Réfs           : ADR-002 (logique métier hors DB), ADR-004 (isolation
---                   mono-tenant), ADR-005 (soft delete sélectif -- ICI
---                   NON APPLIQUÉ, voir note), ADR-010 (PostgreSQL 16),
---                   ADR-017 (pattern interface/stub), ADR-018 (BIGINT
---                   identity + public_id)
+--                   mono-tenant), ADR-005 (Politique de disparition —
+--                   quatre régimes ; ICI régime 4 / suppression réelle
+--                   sur pricing_rule, pas de deleted_at — voir note),
+--                   ADR-010 (PostgreSQL 16), ADR-017 (pattern
+--                   interface/stub), ADR-018 (BIGINT identity + public_id)
 -- Dépend de      : party_account (party_, figé), ref_country/ref_region/
 --                   ref_accommodation/ref_hotel_chain/ref_board_type/
 --                   ref_airline_company/ref_cabin_class (ref_static,

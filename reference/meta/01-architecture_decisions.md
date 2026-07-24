@@ -345,88 +345,125 @@ Verdict : 45€/mois économisés << Risque data leak
 - Coût infrastructure +45€/mois/client → Acceptable vs risque
 ---
  
-## 🏗️ ADR-005: Soft Delete Sélectif (pas partout)
+## 🏗️ ADR-005 : Politique de disparition — quatre régimes
  
 ### Status
-✅ **ACCEPTED** - Réserve équipe acceptée
- 
-### Context
-- Réserve équipe : "WHERE deleted_at IS NULL partout = overhead"
-- Critère : Performance
-### Decision
-**Soft delete UNIQUEMENT** :
-- customers
-- bookings  
-- invoices
-- payments
-**Hard delete** : Tout le reste (configurations, logs, metadata)
- 
-### Performance Impact
- 
-#### Soft Delete Partout (Avant)
- 
+✅ **ACCEPTED** (révisé le 24/07/2026, remplace la version du cadrage initial)
+
+### Principe directeur
+
+> La question n'est pas « peut-on supprimer ? » mais « qu'est-ce qui casse si ça disparaît ? ».
+> Le projet n'applique pas un choix binaire soft/hard delete, mais **quatre régimes**
+> distincts, chacun répondant à une contrainte différente.
+
+### Pourquoi l'ancienne version était fausse
+
+L'ADR-005 d'origine (cadrage initial, ~6 mois) prescrit :
+« soft delete UNIQUEMENT sur customers, bookings, invoices, payments ; hard delete partout ailleurs ».
+
+Ce n'était **pas un oubli de mise à jour**, mais une **divergence progressive** entre une
+intention initiale (réduire l'overhead `WHERE deleted_at IS NULL`) et des décisions de
+conception mieux informées ensuite :
+
+1. **Grand livre append-only** (`settlement_ledger_entry`, puis `cash_movement` /
+   `cash_bank_transaction`) — on ne soft-delete jamais une écriture comptable ; on
+   contre-passe. Un `deleted_at` ici casserait l'invariant protégé par trigger.
+2. **Numérotation légale des factures sans trous** — une facture n'est pas soft-deletable ;
+   l'ADR nommait pourtant « invoices ».
+3. **Tiers unifié (`party_account`)** — le soft delete s'est étendu aux adresses, documents,
+   credentials et dossiers (`booking_folder`), tables que l'ADR ne listait pas.
+4. Les noms génériques (`customers`/`bookings`/`payments`) ne correspondent plus au schéma
+   réel (`party_account`, `booking`, `settlement_ledger_entry`, `booking_payment`).
+
+**Piège actif corrigé le 24/07** : appliquer l'ancien ADR littéralement conduirait à ajouter
+`deleted_at` sur `settlement_ledger_entry` — et à casser le grand livre.
+
+Listes ci-dessous vérifiées contre le catalogue PostgreSQL le 24/07/2026 (chaîne de référence).
+
+### Régime 1 — Suppression logique (`deleted_at`)
+
+**Quand** : de l'historique pointe dessus et doit rester résolvable indéfiniment.
+Exemple : une facture de 2024 doit encore savoir à qui elle a été émise, même si le client
+a été « supprimé » depuis.
+
+**Tables** (exhaustif au 24/07, 5) :
+`party_account`, `party_account_address`, `party_account_document`, `core_credential`,
+`booking_folder`.
+
+**Côté code** : `delete()` = `UPDATE … SET deleted_at = now()`. Toute lecture filtre
+`deleted_at IS NULL`.
+
+### Régime 2 — Écriture définitive + contre-passation
+
+**Quand** : écriture comptable ou financière. On ne supprime **JAMAIS**, on passe une
+écriture inverse. Protégé physiquement par des triggers qui interdisent `UPDATE` et `DELETE`.
+
+**Tables** (3) : `settlement_ledger_entry`, `cash_movement`, `cash_bank_transaction`
+(triggers : `trg_settlement_ledger_no_mutation`, `trg_cash_movement_guard`,
+`trg_cash_bank_transaction_guard`).
+
+**Côté code** : `delete()` **n'existe pas** sur ces tables. Le Repository expose une
+opération de contre-passation, jamais une suppression. Une tentative de `DELETE` lève une
+exception SQL.
+
+⚠️ C'est ici que l'ancien ADR était le plus dangereux.
+
+### Régime 3 — Désactivation (`is_active` / `is_disabled`)
+
+**Quand** : l'élément ne doit plus être proposé à la saisie, mais doit rester lisible dans
+les données passées. Un point de vente fermé doit encore expliquer les ventes de l'an dernier.
+
+**Tables** (14 au 24/07 — à re-vérifier via le catalogue si le schéma évolue) :
+
 ```sql
--- TOUTES les queries (100+ tables)
-SELECT * FROM any_table WHERE deleted_at IS NULL;
- 
--- Overhead :
-- Index partial sur chaque table
-- Filtrage systématique
-- Croissance tables (deleted jamais vraiment supprimé)
+SELECT DISTINCT table_name FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND column_name IN ('is_active', 'is_disabled')
+ORDER BY 1;
 ```
- 
-#### Soft Delete Sélectif (Après)
- 
-```sql
--- Seulement 4 tables critiques
-SELECT * FROM customers WHERE deleted_at IS NULL;
- 
--- Tables non-critiques
-SELECT * FROM configurations;  -- Pas de WHERE deleted_at
- 
--- Résultat :
-- 96% queries sans filtrage deleted_at
-- Index simples sur tables non-critiques
-- Performance +15% mesurée
-```
- 
-### Audit Alternative pour Tables Hard Delete
- 
-```sql
--- Table archive séparée pour RGPD compliance
-CREATE TABLE archived_data (
-    id UUID PRIMARY KEY,
-    table_name VARCHAR(100),
-    record_id UUID,
-    data JSONB,
-    deleted_at TIMESTAMPTZ,
-    deleted_by UUID
-);
- 
--- Trigger auto-archive avant hard delete
-CREATE TRIGGER trg_archive_before_delete
-    BEFORE DELETE ON configurations
-    FOR EACH ROW
-    EXECUTE FUNCTION archive_deleted_row();
- 
--- Fonction
-CREATE FUNCTION archive_deleted_row() RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO archived_data (table_name, record_id, data, deleted_at)
-    VALUES (TG_TABLE_NAME, OLD.id, row_to_json(OLD), NOW());
-    RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-```
- 
-### Consequences
- 
+
+Résultat catalogue 24/07 :
+`booking_service_type`, `cash_movement_type`, `cash_payment_method_routing`, `core_role`,
+`document_template`, `document_trigger_rule`, `party_account`, `pricing_rule`,
+`product_vehicle_unit`, `provider_connection`, `ref_currency`, `ref_language`,
+`sales_point`, `settlement_payment_method`.
+
+**Côté code** : ce n'est **pas** une suppression. `delete()` ne s'applique pas ; c'est une
+opération métier de désactivation, avec son propre cas d'usage.
+
+### Régime 4 — Suppression réelle
+
+**Quand** : rien ne pointe dessus, rien à préserver. Configuration, tables de liaison,
+brouillons. Toutes les autres tables.
+
+**Côté code** : `delete()` = `DELETE`.
+
+**Exemple (§67)** : un brouillon de bordereau (`cash_deposit` / `cash_external_transmission`
+en statut brouillon) se **supprime réellement** (aucune écriture comptable n'existe encore),
+alors qu'un bordereau **validé** ne peut qu'être annulé par contre-passation — deux régimes
+différents sur la même table selon l'état.
+
+### Tableau de décision (Repository générique — DÉBLOQUÉ)
+
+| La table a… | Régime | `delete()` fait… |
+|---|---|---|
+| une colonne `deleted_at` | 1 | `UPDATE deleted_at` |
+| un trigger `guard` / `no_mutation` | 2 | n'existe pas (contre-passer) |
+| une colonne `is_active` / `is_disabled` | 3 | ne s'applique pas |
+| aucune des trois | 4 | `DELETE` |
+
+**Cumul** : une table peut avoir `deleted_at` **et** `is_active`/`is_disabled`
+(ex. `party_account`). Le régime de **suppression logique (1) prime pour `delete()`** ;
+la désactivation reste une opération métier distincte.
+
+### Conséquences
+
 #### ✅ Positives
-- **Performance** : +15% queries (96% sans filtrage deleted_at)
-- **Simplicité** : Index simples sur tables non-critiques
-- **Audit** : Archive séparée pour RGPD
+- Actionnable pour un Repository générique sans ambiguïté
+- Protège le grand livre et la caisse contre toute suppression « polie »
+- Aligne la doc sur le schéma réellement construit
 #### ❌ Négatives
-- Aucune (meilleur des 2 mondes)
+- Quatre régimes à connaître (vs un binaire soft/hard) — coût de compréhension assumé
 ---
  
 ## 🏗️ ADR-006: Audit Classique (pas Event Sourcing)

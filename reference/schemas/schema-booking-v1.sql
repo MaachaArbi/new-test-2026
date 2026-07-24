@@ -15,11 +15,12 @@
 --                   ajout service 'guide', FK sales_point_id/sales_point_payment_id.
 -- Date           : 2026-07-20
 -- Réfs           : ADR-002 (logique métier hors DB, jamais de trigger
---                   métier), ADR-005 (soft delete sélectif), ADR-010
---                   (PostgreSQL 16), ADR-016 (partitionnement par date
---                   dès le début), ADR-017 (pattern interface/stub pour
---                   dépendances vers modules pas encore implémentés),
---                   ADR-018 (BIGINT identity + public_id)
+--                   métier), ADR-005 (Politique de disparition — quatre
+--                   régimes), ADR-010 (PostgreSQL 16), ADR-016
+--                   (partitionnement par date dès le début), ADR-017
+--                   (pattern interface/stub pour dépendances vers modules
+--                   pas encore implémentés), ADR-018 (BIGINT identity +
+--                   public_id)
 -- Dépend de      : party_account, party_account_office (module party_,
 --                   voir schema-party-account-v1.sql) — À EXÉCUTER AVANT
 --                   ref_currency (module ref_, voir schema-ref-common.sql)
