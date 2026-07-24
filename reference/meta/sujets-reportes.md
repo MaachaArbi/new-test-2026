@@ -365,17 +365,27 @@ Décision explicite de l'utilisateur, à rappeler dans chaque prompt de démarra
 
 ---
 
-## 39. Incohérence de nommage FR/EN entre modules — reporté (18/07/2026)
+## 39. Incohérence de nommage FR/EN entre modules — ✅ RÉSOLU le 24/07/2026 (périmètre A : identifiants)
 
-**Origine** : en corrigeant `schema-invoicing-v1.sql` → `schema-invoicing-v1.sql` (renommage complet des identifiants en anglais, demandé explicitement par l'utilisateur), le constat suivant est apparu : certains modules déjà figés portent des préfixes **français** (`settlement_` — Règlements Client/Fournisseur, `sales_point_` — Point de vente), alors que tous les autres sont déjà en anglais (`party_`, `core_`, `ref_`, `booking_`, `cash_`, et désormais `invoicing_`, `pricing_`).
+**Décision utilisateur (24/07)** : passage à l'anglais confirmé. Toutes les autres sessions étant en instance, l'opération a été faite en une passe atomique — le coût d'un tel renommage ne fait qu'augmenter avec le code accumulé.
 
-**Décision de cette session** : ne pas toucher aux modules déjà figés maintenant — `settlement_` et `sales_point_` sont potentiellement déjà consommés par du code applicatif (Symfony), et un renommage de préfixe à ce stade est une migration, pas une simple correction de style. Reporté.
+**Appliqué (périmètre A — identifiants uniquement)** :
+- `reglement_*` → `settlement_*` : 7 tables, 3 fonctions, index et contraintes associés
+- `pointvente` → `sales_point` : table + `booking.sales_point_id`, `booking.sales_point_payment_id` (l'ancien `pointvente_paiement_id` était doublement français — renommé entièrement plutôt qu'en demi-anglais)
+- Backend : namespace `App\Modules\Reglements` → `App\Modules\Settlement`, ~20 classes, 83 fichiers
+- API : 6 routes `/api/v1/reglements/...` → `/api/v1/settlements/...` (aucun consommateur au moment du changement, front pas encore branché)
+- Fichiers renommés : `schema-settlement-v1.sql`, `schema-sales-point-v1.sql`, modèles conceptuels idem. Les diffs historiques gardent leur nom (artefacts datés).
 
-**Renommages pressentis pour une future passe dédiée** (à confirmer en session, pas de décision définitive ici) :
-- `settlement_*` → `settlement_*` ou `payment_*` (à trancher — "settlement" est plus proche du sens du module, "payment" plus étroit puisque le module couvre aussi les obligations, pas seulement les règlements reçus)
-- `sales_point_` → `sales_point_` ou `outlet_`
+**Convention respectée** : identifiants en anglais, commentaires laissés en français.
 
-**À faire avant toute exécution** : lister précisément l'impact (tables, colonnes de FK dans d'autres modules qui référencent ces préfixes — au moins `booking.sales_point_id`/`salesPointPayment_id` à venir, `cash_` qui étend `settlement_payment_method`, `invoicing_` qui vient de brancher des FK sur `settlement_ledger_entry`), et confirmer si c'est fait en une seule migration SQL (`ALTER TABLE ... RENAME`) plutôt qu'une réécriture des fichiers `schema-*.sql` historiques (qui, eux, font foi de l'historique des décisions et ne doivent probablement pas être réécrits rétroactivement).
+**Testé** : chaîne 16/16, 293 tables, base migrée par ALTER structurellement IDENTIQUE à une base reconstruite depuis les schémas (1969 colonnes, 712 index, 1013 contraintes, 106 fonctions, zéro différence).
+
+**Trois pièges rencontrés, à retenir** :
+1. `ALTER TABLE ... RENAME` ne renomme NI les index NI les contraintes — un renommage à moitié fait est pire que pas de renommage.
+2. Un regex avec frontière de mot (`\bpointvente\b`) ne détecte PAS `idx_booking_pointvente` : l'underscore est un caractère de mot.
+3. `booking` est partitionnée : renommer une colonne se propage aux partitions, mais les index et contraintes des partitions ne se propagent PAS et doivent être traités explicitement.
+
+Commits : d460b89 (renommage), ad49457 (traçage du changement d'URLs d'API).
 
 ---
 
@@ -757,3 +767,89 @@ Testé en sandbox : chaîne 16/16, 0 erreur, 293 tables (aucune table ajoutée, 
 **Point ouvert, non traité ici (volontairement différé)** : la distinction entre un transfert inter-sessions légitime post-`cash_validate_session` et un vrai doublon cross-session reste à trancher quand cette fonction sera construite côté backend (pas encore le cas). Aucune contrainte cross-session n'existe par construction — à reprendre lors de la vague `cash_validate_session`.
 
 **Incident annexe détecté pendant cette réouverture** : `schema-ref-common.sql` et `schema-core-identity-v1.sql` ont de nouveau disparu de l'accès du chat pilote (46 fichiers au lieu de 48), très probablement suite à la suppression d'un doublon `schema-core-identity-v1.sql` plus tôt dans la journée qui a semble-t-il supprimé les deux exemplaires (même symptôme déjà observé sur `schema-ref-common.sql`). Travail complété via copies de sauvegarde en cache, vérifiées identiques aux versions validées. **À vérifier par l'utilisateur** : ces deux fichiers sont-ils toujours présents dans le Project ? Si absents, re-uploader (copies disponibles, déjà fournies).
+
+## 64. Codes de référentiels en français — ✅ RÉSOLU le 24/07/2026 (périmètre B du renommage anglais)
+
+**Origine** : découvert en traitant §39. Le vocabulaire des VALEURS de codes était français lui aussi, y compris dans des modules déjà préfixés en anglais.
+
+**Nature différente de §39, et c'est ce qui a justifié de les séparer** : renommer une table est un changement de schéma (mécanique, validable par une chaîne SQL qui passe ou échoue). Renommer un code est un changement de DONNÉES qui casse les comparaisons de chaînes en dur — et une fonction SQL qui cherche `WHERE code = 'depot'` après renommage NE PLANTE PAS : elle ne trouve aucune ligne et retourne NULL. L'échec est silencieux. Les enchaîner aurait fait perdre la capacité d'identifier lequel des deux avait cassé quoi.
+
+**42 codes renommés**, validés un par un avec l'utilisateur :
+- `party_role` (2) : `client`→`customer`, `fournisseur`→`supplier`
+- `party_function` (3) : `gerant`→`manager`, `financier`→`finance`, `agent_reservation`→`booking_agent`
+- `settlement_entry_type` (6) : `obligation_vente`→`customer_obligation`, `obligation_achat`→`supplier_obligation`, `reglement_client`→`customer_payment`, `reglement_fournisseur`→`supplier_payment`, `remboursement_client`→`customer_refund`, `transfert_solde`→`balance_transfer`
+- `cash_movement_type` (15), `cash_bank_transaction_type` (7), `cash_routing_type` (4), `booking_charge_type` (2), CHECK pricing (2), `cash_deposit_type` (1 : `especes`→`cash`)
+
+**Décisions de nommage notables** : `bank_deposit` et non `deposit` pour `cash_bank_transaction_type`, car `deposit` existe déjà dans `settlement_entry_type` avec un autre sens (avance client) — homonymie évitée.
+
+**Hors périmètre (décision utilisateur)** : les abréviations de `settlement_payment_method` (`AD`, `CB`, `C`, `E`, `V`, `VE`, `LC`, `PC`, `RC`, `PE`), susceptibles d'apparaître sur des documents ou dans des imports legacy. Ainsi que `cheque` (mot anglais valide) et `lcn` (abréviation d'instrument bancaire local).
+
+**Simplification décisive découverte au recensement** : 28 des 41 codes vivaient dans des référentiels à PK = `id` (les enfants référencent l'id, pas le code) — simple UPDATE, aucune FK impactée. Seuls 11 codes en PK = `code` ont demandé la séquence prudente (INSERT nouveau / repointer les enfants et les traductions / DELETE ancien), aucun `ON UPDATE CASCADE` n'existant dans le schéma.
+
+**Effets de bord traités** : `VARCHAR(20)` → `(40)` sur `cash_routing_type.code` (`external_transmission` fait 21 caractères).
+
+**Balayage final** : sur les 132 codes seedés du projet, aucune valeur française ne subsiste.
+
+Commits : e20b21d, f67a56b.
+
+## 65. Audit des valeurs par défaut de la base — ✅ RÉSOLU le 24/07/2026
+
+**Origine** : demande de l'utilisateur de revoir et valider toutes les valeurs par défaut.
+
+**Méthode** : 597 défauts recensés. 571 techniques (horodatages, UUID, booléens `is_active`, numériques 0/1) — hors sujet. 22 portaient une décision métier, revues UNE PAR UNE avec l'utilisateur.
+
+**Principe dégagé, réutilisable** : un défaut est légitime quand il énonce un fait vrai PAR CONSTRUCTION (une facture naît brouillon, une session de caisse naît ouverte, un instrument naît actif). Il est nocif quand il devine une SAISIE que l'application aurait dû fournir — car il transforme un oubli en donnée plausible mais fausse.
+
+**5 défauts retirés** (colonnes restées NOT NULL) : `booking.channel_code` (un canal non renseigné devenait silencieusement « backoffice ») ; `booking_payment.status` (la majorité des encaissements sont en espèces au comptoir, donc `captured` immédiatement — conséquence financière en cas d'oubli) ; `cash_payment_method_routing.instrument_tracking_mode` ; `party_account_address.address_type` ; `ref_currency.minor_unit` (la devise principale du métier, le TND, a 3 décimales et non 2 — un oubli aurait stocké des montants avec un facteur 10 d'écart, erreur monétaire silencieuse).
+
+**2 défauts modifiés** :
+- `core_permission.is_delegable` : `true` → `false`. C'est un contrôle de sécurité (plafond universel empêchant un admin délégué de franchise d'octroyer une permission sensible). Avec `true`, un oubli ouvre SILENCIEUSEMENT une escalade de privilèges ; avec `false`, l'oubli bloque une action légitime — panne bruyante, signalée le jour même, sans risque. Principe des défauts sûrs.
+- `config_application_setting.mfa_issuer_name` : `NOT NULL DEFAULT 'MyGo'` → NULLABLE sans défaut. `MyGo` est le nom d'un CLIENT, codé en dur dans un schéma déployé chez TOUS les clients — un autre client aurait vu ce nom dans son application d'authentification. Garantie exigée EN BASE par l'utilisateur : deux triggers (`trg_core_mfa_require_issuer` bloque l'activation du 2FA sans issuer ; `trg_config_protect_mfa_issuer` bloque l'effacement tant que des 2FA sont actifs). Le `WHEN (NEW.is_enabled)` du premier autorise une inscription 2FA non activée. Validation côté Application encore à écrire (aucun module MFA dans `src/` à ce jour) — le trigger est un filet, pas l'expérience utilisateur.
+
+**15 défauts conservés** : états de naissance de cycle de vie (`draft` ×4, `open`, `active` ×2, `pending` ×2, `unpaid`, `transmitted`), les 3 discriminants Pricing (verrouillés par CHECK + FK composite, la valeur ne peut jamais être autre chose), et la politique de sécurité 5 tentatives / 15 minutes.
+
+**Incident en cours de route** : les triggers 2FA avaient été placés dans `diff-core-auth-avancee.sql` (étape 7) alors que `trg_config_protect_mfa_issuer` porte sur `config_application_setting`, créée à l'étape 15 — chaîne cassée, corrigée par déplacement. Rappel : toujours vérifier l'ordre d'exécution avant de placer un objet qui référence deux tables.
+
+Commits : 63dd92d, 47cde89.
+
+## 66. Colonnes de type en chaîne libre — ✅ RÉSOLU le 24/07/2026
+
+**Origine** : découvert pendant l'audit des valeurs par défaut. Six colonnes étaient des `VARCHAR` libres dont les valeurs autorisées ne vivaient que dans un commentaire SQL — contraire au principe déjà acté en §19 (« table de référence, jamais une chaîne libre »), appliqué à `log_activity.entity_type` mais oublié sur `event_type` dans la MÊME table, juste en dessous.
+
+**Risque concret** : `party_account_address` a un index d'unicité « une seule adresse principale par type ». Une faute de frappe (`'Legal'` au lieu de `'legal'`) créait un type fantôme, donc DEUX adresses principales, sans qu'aucune contrainte ne proteste.
+
+**Règle de décision établie avec l'utilisateur, réutilisable** :
+- RÉFÉRENTIEL si la valeur est montrée à l'utilisateur (traduite) ou extensible par configuration sans écrire de code
+- CHECK si l'ensemble est fermé et technique, chaque valeur impliquant une branche de code
+- JAMAIS un VARCHAR nu avec les valeurs en commentaire
+
+**4 référentiels créés** : `ref_document_type` (+ traduction, PARTAGÉ entre `party_account_document` et `booking_traveler` — un passeport reste un passeport des deux côtés ; le filtrage se fait à l'affichage, pas par duplication de la liste) ; `party_address_type` (+ traduction) ; `log_event_type` et `pricing_log_event_type` (modèle `log_entity_type`, libellé simple sans traduction) — listes SÉPARÉES car l'un raconte la vie métier d'une réservation et l'autre trace des modifications de configuration ; les fusionner créerait un `created` ambigu.
+
+**1 colonne laissée en texte libre, volontairement** : `booking_accommodation_detail.board_type` → renommée `board_type_snapshot`. L'utilisateur a confirmé que l'arrangement/pension est le LIBELLÉ COMMERCIAL du fournisseur (« All Inclusive Soft », « Demi-pension boissons incluses »), variable d'un hôtel à l'autre — pas un code de liste fermée. Le commentaire d'origine faisait croire à un référentiel oublié : c'était lui le problème. Commentaire réécrit en « TEXTE LIBRE VOLONTAIRE, PAS un code de référentiel », pour qu'aucune session future ne le « corrige ». `ref_board_type` (vide, alimentée par OctaSoft) reste utilisée par le CATALOGUE pour la recherche standardisée — les deux coexistent volontairement.
+
+**Détection utile de Cursor** : `processing_status_change` était utilisé côté Booking mais absent du commentaire incomplet de `log_activity` — ajouté au seed plutôt que perdu.
+
+**Testé** : chaîne 16/16, 299 tables, insertion de `'Legal'` correctement rejetée par la FK.
+
+Commit : ba96690.
+
+## 67. Cycle de vie du bordereau de transmission externe — OUVERT (24/07/2026)
+
+**Origine** : soulevé pendant l'audit des valeurs par défaut, en examinant `cash_external_transmission_item.status_code DEFAULT 'transmitted'`.
+
+**Constat** : le modèle actuel ne permet pas ce que l'utilisateur décrit comme le fonctionnement réel. Aujourd'hui `cash_external_transmission.transmitted_at` est `NOT NULL DEFAULT now()` et le bordereau n'a AUCUNE colonne de statut — créer un bordereau, c'est le transmettre. Or l'utilisateur a confirmé qu'un caissier doit pouvoir **préparer** un bordereau, le **valider**, le **rouvrir** pour modifier, et le **supprimer**.
+
+**Impliquerait** : un statut sur `cash_external_transmission` (brouillon → validé), `transmitted_at` nullable tant qu'on est en brouillon, une transition de réouverture, et des règles de suppression (probablement interdite après validation, comme partout ailleurs dans le projet).
+
+**Conséquence en cascade** : si l'état brouillon est ajouté, les lignes d'un bordereau non validé ne sont PAS transmises — le défaut `'transmitted'` sur `cash_external_transmission_item` (conservé au §65) deviendra faux et devra être revu.
+
+**À vérifier avant de s'y engager** : le commentaire du schéma indique que `cash_external_transmission` suit « le même triptyque header/items que `cash_deposit` ». Le même défaut de conception existe donc peut-être à l'identique sur les dépôts en banque — élargir le périmètre en conséquence.
+
+## 68. Nom du produit dans les commentaires du schéma — OUVERT (24/07/2026)
+
+**Constat** : plusieurs commentaires du schéma utilisent « MyGo » comme nom du produit (« distinction structurelle interne MyGo », « hors périmètre MyGo », « vocabulaire 100% local à MyGo »). Or l'utilisateur a précisé le 24/07 que **MyGo est le nom d'un de ses CLIENTS**, que l'application s'appelle actuellement **OsTravel**, et qu'il compte la renommer pour ce nouveau produit.
+
+**Enjeu** : la documentation du schéma désigne le produit par le nom d'un client, ce qui prêtera à confusion pour toute personne rejoignant le projet. Le même problème avait été trouvé côté données (`mfa_issuer_name DEFAULT 'MyGo'`, corrigé au §65).
+
+**À trancher** : attendre le nom définitif du nouveau produit avant de reprendre ces commentaires, ou adopter dès maintenant une formulation neutre (« le système », « l'ERP ») pour ne plus dépendre d'un nom.
+
