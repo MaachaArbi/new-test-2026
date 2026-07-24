@@ -531,15 +531,16 @@ CREATE TRIGGER trg_booking_updated_at BEFORE UPDATE ON booking
 -- transfer...) auront leur propre booking_<type>_detail, créée au
 -- fur et à mesure du besoin réel -- beaucoup de services (visa, spa)
 -- n'en auront probablement aucune.
--- board_type (arrangement/pension) vit ICI, au niveau de la réservation
--- entière : une réservation hôtel n'a qu'un seul arrangement, même si
--- elle contient plusieurs chambres (cf. booking_hotel_room ci-dessous).
+-- board_type_snapshot (arrangement/pension commercial) vit ICI, au niveau
+-- de la réservation entière : une réservation hôtel n'a qu'un seul arrangement,
+-- même si elle contient plusieurs chambres (cf. booking_hotel_room).
+-- TEXTE LIBRE VOLONTAIRE — distinct de ref_board_type (catalogue).
 -- ============================================================
 CREATE TABLE booking_accommodation_detail (
     booking_id                   BIGINT PRIMARY KEY, -- FK applicative vers booking.id (voir note partitionnement)
     accommodation_id             BIGINT REFERENCES ref_accommodation(id), -- NULLABLE : résa antérieure à la réconciliation avec le référentiel, ou import legacy jamais rapproché
     accommodation_name_snapshot  VARCHAR(255), -- figé au moment de la réservation -- l'hébergement peut être renommé plus tard, la résa ne doit pas bouger
-    board_type                   VARCHAR(50),  -- pension : 'all_inclusive','half_board','room_only'... -- 1 seul par réservation
+    board_type_snapshot          VARCHAR(50),  -- libellé commercial de l'arrangement tel qu'annoncé par le fournisseur, figé à la vente -- TEXTE LIBRE VOLONTAIRE, PAS un code de référentiel ; les exemples ci-dessus ne sont pas une liste fermée
     created_at                   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at                   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -652,7 +653,7 @@ CREATE TABLE booking_traveler (
     nationality_country_id  BIGINT,       -- FK référentiel statique pays, hors périmètre de ce script
     residence_country_id    BIGINT,       -- lieu de résidence, parfois obligatoire (vol/maritime) -- même référentiel
 
-    document_type             VARCHAR(30),  -- 'passport','cin'... -- confirmé nécessaire pour vol/maritime international
+    document_type             VARCHAR(30) REFERENCES ref_document_type(code),  -- pièce d'identité ; confirmé nécessaire pour vol/maritime international
     document_number            VARCHAR(50),
     driving_license_number      VARCHAR(50), -- pertinent pour service_type='car_rental' (conducteur), NULL sinon -- confirmé sur capture réelle
 

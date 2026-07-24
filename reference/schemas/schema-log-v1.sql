@@ -44,6 +44,30 @@ INSERT INTO log_entity_type (code, label, activity_retention_days, audit_retenti
 -- table de référence, extensible sans migration structurelle.
 
 -- ============================================================
+-- log_event_type : types d'événement du journal métier (modèle B)
+-- Symétrique de log_entity_type. Le texte lisible vit dans
+-- log_activity.description ; event_type sert au filtrage.
+-- Liste séparée de pricing_log_event_type (décision utilisateur 24/07).
+-- ============================================================
+CREATE TABLE log_event_type (
+    code        VARCHAR(30) PRIMARY KEY,
+    label       VARCHAR(100) NOT NULL,
+    sort_order  SMALLINT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE log_event_type IS 'Types d''événement de log_activity (filtrage). Extensible sans migration structurelle. Distinct de pricing_log_event_type.';
+
+INSERT INTO log_event_type (code, label, sort_order) VALUES
+    ('created',                   'Created',                   0),
+    ('status_change',             'Status change',             1),
+    ('processing_status_change',  'Processing status change',  2),
+    ('notification_supplier',     'Supplier notification',     3),
+    ('notification_client',       'Customer notification',     4),
+    ('payment',                   'Payment',                   5),
+    ('loyalty_points',            'Loyalty points',            6);
+
+-- ============================================================
 -- log_activity : journal métier lisible, visible côté client/agent
 -- ("qui a fait quoi"). Peuplé EXPLICITEMENT par le code applicatif
 -- Symfony -- jamais par un trigger. Remplace booking_log tel quel :
@@ -54,7 +78,7 @@ CREATE TABLE log_activity (
     id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     entity_type       VARCHAR(30) NOT NULL REFERENCES log_entity_type(code),
     entity_id         BIGINT NOT NULL, -- FK applicative -- pas de contrainte SQL possible vers N tables cibles différentes selon entity_type
-    event_type        VARCHAR(30) NOT NULL, -- 'created','status_change','notification_supplier','notification_client','payment','loyalty_points',...
+    event_type        VARCHAR(30) NOT NULL REFERENCES log_event_type(code),
     description       TEXT NOT NULL,        -- texte formaté à l'écriture, lisible tel quel
     metadata          JSONB NOT NULL DEFAULT '{}'::jsonb, -- ex: {"destinataires": [...], "montant": ..., "status_code_snapshot": "confirmed"}
     actor_account_id  BIGINT REFERENCES party_account(id), -- NULL si système/automatique

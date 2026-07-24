@@ -10,7 +10,7 @@ final readonly class SetBookingAccommodationDetailCommand
         public int $bookingId,
         public ?int $accommodationId = null,
         public ?string $accommodationNameSnapshot = null,
-        public ?string $boardType = null,
+        public ?string $boardTypeSnapshot = null,
     ) {
     }
 }

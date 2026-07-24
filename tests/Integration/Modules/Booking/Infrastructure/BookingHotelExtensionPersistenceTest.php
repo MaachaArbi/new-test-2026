@@ -101,7 +101,7 @@ final class BookingHotelExtensionPersistenceTest extends KernelTestCase
             bookingId: $bookingId,
             accommodationId: null,
             accommodationNameSnapshot: 'Hotel Non Réconcilié',
-            boardType: 'half_board',
+            boardTypeSnapshot: 'half_board',
         ));
 
         $this->em->clear();
@@ -111,7 +111,7 @@ final class BookingHotelExtensionPersistenceTest extends KernelTestCase
         self::assertSame($bookingId, $reloaded->bookingId());
         self::assertNull($reloaded->accommodationId());
         self::assertSame('Hotel Non Réconcilié', $reloaded->accommodationNameSnapshot());
-        self::assertSame('half_board', $reloaded->boardType());
+        self::assertSame('half_board', $reloaded->boardTypeSnapshot());
     }
 
     public function test_accommodation_detail_rejected_for_non_hotel(): void

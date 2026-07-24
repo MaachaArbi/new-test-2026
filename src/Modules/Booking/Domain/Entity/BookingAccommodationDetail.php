@@ -7,6 +7,7 @@ namespace App\Modules\Booking\Domain\Entity;
 /**
  * Extension 1-1 booking_accommodation_detail (PK = booking_id).
  * Spécifique service_type=hotel. Pas de setters — corrections hors vague.
+ * board_type_snapshot = libellé commercial fournisseur figé à la vente (texte libre).
  */
 final class BookingAccommodationDetail
 {
@@ -14,7 +15,7 @@ final class BookingAccommodationDetail
         private int $bookingId,
         private ?int $accommodationId,
         private ?string $accommodationNameSnapshot,
-        private ?string $boardType,
+        private ?string $boardTypeSnapshot,
     ) {
     }
 
@@ -22,13 +23,13 @@ final class BookingAccommodationDetail
         int $bookingId,
         ?int $accommodationId,
         ?string $accommodationNameSnapshot,
-        ?string $boardType,
+        ?string $boardTypeSnapshot,
     ): self {
         return new self(
             $bookingId,
             $accommodationId,
             $accommodationNameSnapshot,
-            $boardType,
+            $boardTypeSnapshot,
         );
     }
 
@@ -47,8 +48,8 @@ final class BookingAccommodationDetail
         return $this->accommodationNameSnapshot;
     }
 
-    public function boardType(): ?string
+    public function boardTypeSnapshot(): ?string
     {
-        return $this->boardType;
+        return $this->boardTypeSnapshot;
     }
 }

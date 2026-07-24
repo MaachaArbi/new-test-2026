@@ -139,6 +139,49 @@ CREATE TRIGGER trg_party_account_updated_at BEFORE UPDATE ON party_account
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
+-- party_address_type : types d'adresse (modèle A, traduit)
+-- ============================================================
+CREATE TABLE party_address_type (
+    code        VARCHAR(30) PRIMARY KEY,
+    sort_order  SMALLINT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE party_address_type IS 'Types d''adresse d''un tiers (legal/billing/delivery/domiciliation/other). Libellés dans party_address_type_translation.';
+
+INSERT INTO party_address_type (code, sort_order) VALUES
+    ('legal',          0),
+    ('billing',        1),
+    ('delivery',       2),
+    ('domiciliation',  3),
+    ('other',          4);
+
+CREATE TABLE party_address_type_translation (
+    address_type_code  VARCHAR(30) NOT NULL REFERENCES party_address_type(code),
+    language_code      VARCHAR(5) NOT NULL REFERENCES ref_language(code),
+    label              VARCHAR(100) NOT NULL,
+    description        TEXT,
+    PRIMARY KEY (address_type_code, language_code)
+);
+
+INSERT INTO party_address_type_translation (address_type_code, language_code, label) VALUES
+    ('legal',         'en', 'Legal'),
+    ('legal',         'fr', 'Légale'),
+    ('legal',         'ar', 'قانونية'),
+    ('billing',       'en', 'Billing'),
+    ('billing',       'fr', 'Facturation'),
+    ('billing',       'ar', 'فوترة'),
+    ('delivery',      'en', 'Delivery'),
+    ('delivery',      'fr', 'Livraison'),
+    ('delivery',      'ar', 'تسليم'),
+    ('domiciliation', 'en', 'Domiciliation'),
+    ('domiciliation', 'fr', 'Domiciliation'),
+    ('domiciliation', 'ar', 'موطن'),
+    ('other',         'en', 'Other'),
+    ('other',         'fr', 'Autre'),
+    ('other',         'ar', 'أخرى');
+
+-- ============================================================
 -- party_account_address : adresses multi-valeurs, historisées
 -- Besoin confirmé par l'historique legacy (ost_client avait 3 adresses
 -- distinctes : adresse, delivery_adresse, adressedomiciliation).
@@ -146,7 +189,7 @@ CREATE TRIGGER trg_party_account_updated_at BEFORE UPDATE ON party_account
 CREATE TABLE party_account_address (
     id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     account_id   BIGINT NOT NULL REFERENCES party_account(id),
-    address_type VARCHAR(30) NOT NULL, -- 'legal','billing','delivery','domiciliation','other'
+    address_type VARCHAR(30) NOT NULL REFERENCES party_address_type(code),
     line1        VARCHAR(255) NOT NULL,
     line2        VARCHAR(255),
     city         VARCHAR(100),
@@ -338,7 +381,7 @@ CREATE TRIGGER trg_party_account_attribute_updated_at BEFORE UPDATE ON party_acc
 CREATE TABLE party_account_document (
     id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     account_id          BIGINT NOT NULL REFERENCES party_account(id),
-    document_type       VARCHAR(50) NOT NULL, -- 'passport','cin','driving_license','contract','logo','other'...
+    document_type       VARCHAR(30) NOT NULL REFERENCES ref_document_type(code),
     document_number     VARCHAR(100),          -- numéro (passeport/CIN/permis...), NULL si non applicable
     issuing_country_id  BIGINT,                -- FK référentiel pays statique, NULL si non applicable
     issue_date          DATE,

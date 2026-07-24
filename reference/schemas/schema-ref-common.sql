@@ -76,6 +76,57 @@ INSERT INTO ref_currency (code, label, numeric_code, symbol, oct_code, minor_uni
     ('DZD', 'Algerian Dinar', '012', 'د.ج', 'PLACEHOLDER-DZD', 2);
 
 -- ============================================================
+-- ref_document_type : types de pièces / documents (Party + Booking)
+-- Référentiel local transverse (3e famille : pas de oct_code), partagé
+-- entre party_account_document et booking_traveler. Le filtrage UI
+-- (formulaire voyageur = pièces d'identité seulement) se fait à
+-- l'affichage, pas par duplication de liste.
+-- ============================================================
+CREATE TABLE ref_document_type (
+    code        VARCHAR(30) PRIMARY KEY,
+    sort_order  SMALLINT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE ref_document_type IS 'Types de documents/pièces d''identité partagés Party + Booking. Référentiel local (pas de oct_code). Libellés dans ref_document_type_translation.';
+
+INSERT INTO ref_document_type (code, sort_order) VALUES
+    ('passport',         0),
+    ('cin',              1),
+    ('driving_license',  2),
+    ('contract',         3),
+    ('logo',             4),
+    ('other',            5);
+
+CREATE TABLE ref_document_type_translation (
+    document_type_code  VARCHAR(30) NOT NULL REFERENCES ref_document_type(code),
+    language_code       VARCHAR(5) NOT NULL REFERENCES ref_language(code),
+    label               VARCHAR(100) NOT NULL,
+    description         TEXT,
+    PRIMARY KEY (document_type_code, language_code)
+);
+
+INSERT INTO ref_document_type_translation (document_type_code, language_code, label) VALUES
+    ('passport',        'en', 'Passport'),
+    ('passport',        'fr', 'Passeport'),
+    ('passport',        'ar', 'جواز سفر'),
+    ('cin',             'en', 'National ID'),
+    ('cin',             'fr', 'CIN'),
+    ('cin',             'ar', 'بطاقة تعريف'),
+    ('driving_license', 'en', 'Driving licence'),
+    ('driving_license', 'fr', 'Permis de conduire'),
+    ('driving_license', 'ar', 'رخصة سياقة'),
+    ('contract',        'en', 'Contract'),
+    ('contract',        'fr', 'Contrat'),
+    ('contract',        'ar', 'عقد'),
+    ('logo',            'en', 'Logo'),
+    ('logo',            'fr', 'Logo'),
+    ('logo',            'ar', 'شعار'),
+    ('other',           'en', 'Other'),
+    ('other',           'fr', 'Autre'),
+    ('other',           'ar', 'أخرى');
+
+-- ============================================================
 -- NOTES D'IMPLÉMENTATION
 -- ============================================================
 -- 1. EN est la langue pivot : fallback applicatif = locale demandée -> en

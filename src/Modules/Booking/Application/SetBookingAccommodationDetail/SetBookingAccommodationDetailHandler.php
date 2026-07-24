@@ -31,7 +31,7 @@ final class SetBookingAccommodationDetailHandler
             $command->bookingId,
             $command->accommodationId,
             $command->accommodationNameSnapshot,
-            $command->boardType,
+            $command->boardTypeSnapshot,
         );
 
         $this->detailRepository->save($detail);

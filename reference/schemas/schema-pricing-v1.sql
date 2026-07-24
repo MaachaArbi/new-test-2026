@@ -621,6 +621,27 @@ COMMENT ON TABLE pricing_rule_bus_model IS 'IMPROVISÉ -- modèle de bus ciblé.
 
 
 -- ============================================================
+-- pricing_log_event_type : événements du journal de config Pricing
+-- (modèle B). Liste SÉPARÉE de log_event_type — fusionner créerait
+-- un 'created' ambigu (décision utilisateur 24/07).
+-- ============================================================
+CREATE TABLE pricing_log_event_type (
+    code        VARCHAR(30) PRIMARY KEY,
+    label       VARCHAR(100) NOT NULL,
+    sort_order  SMALLINT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE pricing_log_event_type IS 'Types d''événement de pricing_rule_log. Distinct de log_event_type (journal métier vs audit de configuration).';
+
+INSERT INTO pricing_log_event_type (code, label, sort_order) VALUES
+    ('created',     'Created',     0),
+    ('updated',     'Updated',     1),
+    ('activated',   'Activated',   2),
+    ('deactivated', 'Deactivated', 3),
+    ('deleted',     'Deleted',     4);
+
+-- ============================================================
 -- SECTION 7 — AUDIT TRAIL (pricing_rule_log)
 -- Confirmé en session : snapshot complet avant/après à chaque
 -- modification, y compris suppression, avec auteur -- pattern identique
@@ -635,7 +656,7 @@ COMMENT ON TABLE pricing_rule_bus_model IS 'IMPROVISÉ -- modèle de bus ciblé.
 CREATE TABLE pricing_rule_log (
     id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     rule_id           BIGINT NOT NULL, -- FK applicative, PAS de contrainte réelle (survit à la suppression de la règle)
-    event_type        VARCHAR(30) NOT NULL, -- 'created','updated','activated','deactivated','deleted'
+    event_type        VARCHAR(30) NOT NULL REFERENCES pricing_log_event_type(code),
     field_changes     JSONB NOT NULL DEFAULT '[]'::jsonb, -- ex: [{"field":"marge","before":"207.000","after":"497.000"}] -- reproduit le pattern legacy (capture "Historique")
     actor_account_id  BIGINT REFERENCES party_account(id), -- NULL si système/automatique
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
