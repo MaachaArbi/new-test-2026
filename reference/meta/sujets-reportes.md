@@ -19,12 +19,10 @@ Document vivant. Chaque sujet volontairement écarté du périmètre en cours do
 **Mise à jour (16/07)** : positionné en ordre 5 des modules restants (voir `00-INDEX.md`), après le référentiel statique — dépendance bloquante confirmée. Doit aussi trancher au démarrage si "Rules Engine" (mentionné dans l'ancien `00-project_overview.md`) est absorbé ici ou reste un sujet distinct.
 **✅ Résolu le 19/07/2026** : module Pricing figé — voir §54 pour le détail complet. Rules Engine confirmé de facto absorbé. Le "Contracting" (tarifs d'achat, micro-marges par arrangement/politique enfant/réduction chambre) reste distinct et non traité — voir §54, point sur la découverte des micro-marges de contrat.
 
-## 2. Plafond & solde (multi-devise, multi-produit, multi-bureau)
+## 2. Plafond & solde (multi-devise, multi-produit, multi-bureau) — ✅ RÉSOLU le 24/07/2026 (plafond)
 **Origine** : `plafond`, `soldeTemporaire`, `dateExpirationSolde`, `compte_tiers` sur `ost_amicale`/`ost_client`.
-**Décision provisoire** : un plafond par devise et par produit, module dédié, indépendant de `party_account`.
-**Précision** : solde scopé par (client, bureau, devise). Comptes bancaires par bureau et par devise → futur module Cash Management (point 2bis).
-**Précision (module Booking)** : Booking dépend de ce module via une interface (`SolvencyCheckerInterface`, stub retournant toujours `true`).
-**Fusionne désormais avec le point 21 ci-dessous** — c'est le même futur module Règlements Client/Fournisseur. **Le plafond lui-même reste hors Règlements, voir section 25 (mise à jour) ci-dessous — appartient au futur module Pricing/Finance.**
+**Décision provisoire (obsolète)** : un plafond par devise et par produit, module dédié.
+**✅ Résolu le 24/07/2026 (balayage Party)** : table `party_account_credit_limit` — une seule table pour plafond permanent et rallonge temporaire (`valid_to`), **par devise**, sans ventilation par service. Formule Domain : `disponible = solde grand livre + plafond + rallonges valides`. Placement dans Party (« décision SUR un tiers »), pas Règlements. Voir `modele-conceptuel-party.md`. Le solde lui-même reste porté par `settlement_balance` (Règlements, déjà construit).
 
 ## 2bis. Cash Management (comptes bancaires par bureau/devise) — ✅ RÉSOLU, voir point 21bis
 
@@ -100,8 +98,8 @@ Triage complet des 21 paramètres identifiés (capture legacy `ost_amicale`) :
 | Paramètre | Destination | Statut |
 |---|---|---|
 | `BOOK_NOW_PAY_LATER` | `booking.option_expiry_at` | ✅ Construit |
-| `ALL_RESERVATIONS_ON_REQUEST` | `booking.is_on_request` | ✅ Construit |
-| `DISABLE_PAYMENT_WITHOUT_BALANCE` | Plafond/solvabilité (§2/§25bis, `SolvencyCheckerInterface`) | ⏳ Rattaché à un point déjà ouvert, session Finance dédiée |
+| `ALL_RESERVATIONS_ON_REQUEST` | `party_account_commercial_policy.force_on_request` → résa en demande motif `account_policy` | ✅ Construit (24/07) — la règle vit sur le **compte** ; `booking.is_on_request` n'est que la conséquence |
+| `DISABLE_PAYMENT_WITHOUT_BALANCE` | `party_account_commercial_policy.block_when_insufficient_balance` (+ plafond §2) | ✅ Construit (24/07) |
 | `HIDE_LIST_FACTURE` | RBAC — permission "voir liste factures" | ⏳ Permission à ajouter dans `core_permission` (additif simple, pas de nouvelle session) |
 | `HIDE_PRINT_INVOICE` | RBAC — permission "imprimer facture" | ⏳ Permission à ajouter dans `core_permission` (additif simple) |
 | `GOLD_PARTNER` | `party_account_group` (dimension `commercial`) | ⏳ Devient une appartenance de groupe plutôt qu'un booléen — à créer au moment de l'usage réel |
@@ -877,15 +875,19 @@ Commit : ba96690.
 
 **Résolu (24/07)** : formulation neutre retenue plutôt qu'un nom de produit — « ce projet » pour les énoncés de périmètre, « le système » pour les actions à l'exécution. Choix motivé par le fait que le nom commercial doit encore changer : le neutre ne périmera pas. ~17 occurrences reformulées phrase par phrase (pas de rechercher-remplacer, qui aurait produit des tournures fautives). Volontairement CONSERVÉES : les données client réelles (compte agence myGO dans src/ et tests/, content_provider dans pricing-test-data.sql), les archives datées (journaux, diffs historiques), et les entrées de backlog qui documentent ce problème (§65, §68) — les effacer aurait rendu le texte incompréhensible.
 
-## 69. Exonération de TVA par client — OUVERT (24/07/2026)
+## 69. Exonération de TVA par client — ✅ RÉSOLU le 24/07/2026 (élargi au timbre)
 
-**Origine** : clôture partielle §34 (défaut TVA par type de service). La règle de résolution Domain prévoit « client exonéré → taux 0 », mais `party_account` n'a aujourd'hui **aucun indicateur d'exonération** (il a un `tax_id`, rien qui dise qu'un client en est exempté).
+**Origine** : clôture partielle §34 (défaut TVA par type de service). Questions ouvertes tranchées au balayage Party.
 
-**Questions en attente (utilisateur)** :
-1. L'exonération est-elle un simple **oui/non**, ou dépend-elle du **type de prestation** ?
-2. Est-elle **permanente**, ou liée à une **attestation datée** (période de validité) ?
+**✅ Résolu le 24/07/2026** : `party_tax_exemption_type` (`vat`, `stamp_duty`) + `party_account_tax_exemption` (historisée, `valid_to` NULL = permanent). Les deux exonérations sont **indépendantes** ; couvrent **toute l'activité** (pas par service) ; tout tiers peut être exonéré. `party_account_organization_identity.is_vat_subject` **supprimé** (redondant et limité aux organisations).
 
-**Risque tant que non traité** : sans cet indicateur, l'agent doit passer le taux à 0 manuellement à chaque facture — risque d'oubli et de TVA facturée à tort.
+**Écart backend à traiter ensuite** : le code PHP / Doctrine / tests s'appuient encore sur `isVatSubject` / `is_vat_subject` (entity, command, handler, ORM XML, bootstrap, tests) — signalé, non corrigé dans cette tâche schéma.
 
-**Hors périmètre immédiat** : ne pas anticiper la structure tant que les deux questions ci-dessus ne sont pas tranchées.
+## 70. Devise de vente imposée par la source du produit — OUVERT (24/07/2026)
+
+**Origine** : balayage Party (24/07). Besoin **nouveau**, pas une reprise du legacy.
+
+**Constat** : un produit venant d'un fournisseur qui facture en USD ne devrait être revendable qu'en USD, et le client doit en être averti dans son espace. Rien ne porte cette contrainte aujourd'hui (ni `provider_connection` ni le Catalogue n'ont de devise).
+
+**À traiter** au balayage de Provider Integration — inscrit ici explicitement pour ne pas être oublié après délocalisation hors Party.
 

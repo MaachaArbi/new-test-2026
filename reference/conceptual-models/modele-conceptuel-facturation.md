@@ -84,7 +84,7 @@ Une ligne libre **pose une écriture nouvelle** dans le grand livre au moment de
 
 Ordre de résolution (à construire côté Domain Invoicing, pas encore de module PHP) :
 
-1. client exonéré → 0 *(indicateur d'exonération **absent** aujourd'hui — voir `sujets-reportes.md` §69)*
+1. client exonéré → 0 *(via `party_account_tax_exemption` type `vat`, §69)*
 2. sinon prestation à l'étranger → 0 (hors champ de la TVA locale ; déduit du pays de l'hébergement / prestation, pas d'un second type de service)
 3. sinon → le défaut du type de service (`invoicing_service_type_default_tax`)
 4. et dans tous les cas, l'utilisateur peut modifier **taux ET nature** à la facturation
@@ -220,4 +220,4 @@ FK nullable en en-tête, reporting uniquement, aucune dépendance bloquante.
 - **Répartition automatique d'un avoir sur plusieurs factures distinctes** : jamais rencontré en pratique, choix utilisateur par défaut retenu (pas de règle système). À reconfronter au premier cas réel.
 - **Réémission après avoir sur split figé** : traitement en exception documentée, pas de mécanisme natif prévu en V1.
 - **Concurrence sur le compteur de numérotation** : le legacy (`GetNumInvoice`) n'a jamais révélé de problème en pratique, mais le volume actuel ne prouve pas l'absence de risque. Verrouillage transactionnel à valider par test de concurrence réel en sandbox avant mise en production.
-- **Taux de TVA/timbre/FODEC** : tables avec historique dans le temps + défaut par type de service (`invoicing_service_type_default_tax`) — §34 clos le 24/07. Exonération client : ouvert, voir `sujets-reportes.md` §69.
+- **Exonération client** : ✅ résolu au balayage Party 24/07 (`party_account_tax_exemption`, §69).

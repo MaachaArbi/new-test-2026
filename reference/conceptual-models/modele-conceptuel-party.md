@@ -1,6 +1,6 @@
 # Modèle Conceptuel — Module Party (tiers unifié)
 
-**Statut** : Figé (V1.2) — 14 juillet 2026
+**Statut** : Figé (V1.5) — balayage confrontation legacy 24 juillet 2026 (V1.2 initiale 14/07 ; V1.4 groupes/franchise 19–20/07)
 **Anciennement nommé** : module `crm_` (renommé en `party_` le 14/07/2026 — voir décision ci-dessous)
 **Remplace** : `ost_amicale`, `ost_client`, `ost_com_fournisseur`, identité de `ost_user`
 **Convention de nommage** : préfixe par module (`party_`, `core_`, `ref_`).
@@ -22,18 +22,22 @@ Un tiers n'a pas de type fixe : il porte un ou plusieurs **rôles** qui évoluen
 
 | Table | Rôle |
 |---|---|
-| `party_account` | Identité pivot, fine, jointe partout. `nature` (person/organization) + `parent_account_id` pour sous-comptes B2B + `logo_url` (cache) |
+| `party_account` | Identité pivot, fine, jointe partout. `nature` (person/organization) + `parent_account_id` pour sous-comptes B2B + `logo_url` (cache) + devises d'affichage/facturation (défauts, pas contraintes) |
 | `party_account_address` | Adresses multi-valeurs, typées (legal/billing/delivery/domiciliation), historisées |
 | `party_role` / `party_role_translation` | Référentiel de rôles (table, pas ENUM) + libellés traduits (en/fr/ar) |
 | `party_account_role` | Association historisée account↔rôle, cumulable |
 | `party_account_person_identity` | Extension 1-1, nature=person — volontairement minimale (`first_name`/`last_name`) |
-| `party_account_organization_identity` | Extension 1-1, nature=organization (matricule fiscal, RC...) |
+| `party_account_organization_identity` | Extension 1-1, nature=organization (matricule fiscal, RC, comptes comptables d'export…) |
 | `party_function` / `party_function_translation` | Référentiel des fonctions métier + libellés traduits, inclut la fonction générique `member` |
 | `party_account_function` | Attribution historisée d'une fonction (ou accès basique via `member`) à une personne, contextualisée par organisation, cumulable |
-| `party_account_attribute` | JSONB, une ligne/compte — soupape anti-dette technique |
+| `party_account_attribute` | JSONB, une ligne/compte — soupape anti-dette technique (champs rares) |
 | `party_account_document` | Documents ET pièces d'identité versionnés dans le temps |
 | `party_account_office` | Extension 1-1 : marque qu'un compte est un bureau opérationnel (entité légale par pays), devise par défaut |
 | `party_account_office_relation` | Lien approuvé et historisé tiers↔bureau (client/fournisseur), obligatoire avant transaction |
+| `party_tax_exemption_type` (+ trad.) / `party_account_tax_exemption` | Exonérations TVA / timbre, indépendantes, historisées |
+| `party_assignment_type` (+ trad.) / `party_account_manager_assignment` | Responsables commercial / recouvrement (distinct de `party_account_function`) |
+| `party_account_credit_limit` | Plafond / rallonge par devise (autorisation de découvert) |
+| `party_account_commercial_policy` | `force_on_request` / `block_when_insufficient_balance` (colonnes typées) |
 
 ## Entités — Module `core_`
 
@@ -54,7 +58,7 @@ Un tiers n'a pas de type fixe : il porte un ou plusieurs **rôles** qui évoluen
 2. **Email = clé pivot d'unicité** (unique, cf. auth/notifications) — téléphone volontairement non-unique (retour d'expérience legacy).
 3. **`parent_account_id` (self-FK)** — modélise le pattern B2B distributeur : une agence "master" ouvre et gère des sous-agences ; la relation commerciale/juridique reste portée par l'agence maître. Plafond et pricing des sous-comptes délégués au module Pricing/Finance, pas géré ici.
 4. **Documents d'identité versionnés, pas figés** — CIN/passeport/permis vivent dans `party_account_document`, qui porte `document_number`/`issue_date`/`expiry_date`. Un renouvellement de passeport = nouvelle ligne, l'historique est conservé nativement.
-5. **Champs rares → JSONB, pas colonnes dédiées** — `birth_date`/`marriage_date` déplacés dans `party_account_attribute` : usage trop marginal pour justifier une colonne toujours-NULL sur une table lue en masse.
+5. **Champs rares → JSONB soupape, pas colonnes dédiées** — `party_account_attribute` accueille des attributs sporadiques qui ne justifient pas une colonne toujours-NULL sur une table jointe en masse. Ce n'est **pas** un EAV générique ni un `autre_config` (§14). Un attribut devenu stable doit être promu en colonne typée. (Les exemples legacy `birth_date`/`marriage_date` ont été **écartés** du produit le 24/07 — la soupape reste utile comme mécanisme.)
 6. **Authentification sortie du module Party** — `core_credential` vit dans un module séparé (`core_`) : préoccupation transverse et sécuritaire, pas une donnée de relation commerciale.
 7. **Comptes `channel`/`system`** — remplacent l'ancien "compte passager générique" pour le web ; un compte par canal, traçabilité propre.
 8. **BIGINT identity + `public_id` UUID** — clé technique séquentielle pour la performance (évite la fragmentation d'index causée par un UUID v4 aléatoire) ; `public_id` exposable en API/URL.
@@ -65,7 +69,10 @@ Un tiers n'a pas de type fixe : il porte un ou plusieurs **rôles** qui évoluen
 13. **Pas de NULL magique pour le contexte interne** — `party_account_function.organization_account_id` est toujours renseigné. Le contexte "interne" (staff back-office) pointe vers un `party_account` réel représentant l'agence exploitant la plateforme elle-même (à créer au bootstrap). Prépare aussi le futur module Facturation (identité légale de l'émetteur).
 14. **Fusion accès/fonction (`party_account_member` supprimée)** — l'ancienne notion d'"a le droit d'agir pour cette organisation, sans fonction précise" devient la fonction générique `member` dans `party_account_function`. Une seule table au lieu de deux quasi identiques, moins d'écriture dupliquée.
 15. **Multi-bureau (tenant multi-pays)** — un "bureau" (Tunisie, Algérie, France...) est un `party_account` comme n'importe quel tiers, pas une notion à part : il peut être client/fournisseur d'un autre bureau du même groupe. `party_account_office` marque juste "ce compte est un de mes bureaux" (devise par défaut, code). Le rattachement tiers↔bureau (`party_account_office_relation`) est **obligatoire** avant toute transaction, avec workflow d'approbation — la visibilité comptable entre bureaux (grand livre partagé ou non) est hors périmètre Party.
+16. **Décisions sur un tiers vivent dans Party** (balayage 24/07) — exonérations fiscales, plafond/découvert, affectations de responsables, politique commerciale. Règle : « Party porte ce qu'on décide SUR un tiers ; Règlements porte ce qu'on constate AVEC lui. »
+17. **Plafond = autorisation de découvert par devise** — une seule table pour permanent et rallonge (`valid_to`). Formule Domain : `disponible = solde grand livre (devise) + plafond + rallonges valides`. Pas de ventilation par service. Le paiement libère de la capacité.
+18. **Affectations distinctes de `party_account_function`** — responsable commercial/recouvrement d'un client ≠ fonction exercée dans une organisation.
 
 ## Hors périmètre (volontairement, cf. `sujets-reportes.md`)
 
-Pricing/remises/marges, plafond & solde, point de vente, tags commerciaux (`party_account_group`), permissions RBAC fines, lien hôtel↔fournisseur, et le "vrai" module CRM (leads/opportunités/pipeline/activités).
+Pricing/remises/marges, point de vente, permissions RBAC fines, lien hôtel↔fournisseur, et le "vrai" module CRM (leads/opportunités/pipeline/activités). Plafond, exonérations, affectations et politique commerciale : **intégrés en V1.5** (balayage 24/07).

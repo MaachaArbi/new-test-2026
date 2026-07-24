@@ -8,10 +8,15 @@
 --                   module CRM (crm_lead, crm_opportunity, crm_pipeline...)
 --                   — d'où la nécessité de ne PAS utiliser le préfixe crm_
 --                   ici, pour éviter la collision de nom plus tard.
--- Version        : 1.2 - Renommage crm_->party_, fusion account_member
---                   dans account_function, party_account_address créée,
---                   organization_account_id NOT NULL (plus de NULL magique)
--- Date           : 2026-07-14
+-- Version        : 1.5 - Balayage confrontation legacy (24/07/2026) :
+--                   devises d'affichage/facturation, comptes comptables
+--                   export, exonérations fiscales, affectations de
+--                   responsables, plafond/découvert, politique commerciale ;
+--                   retrait is_vat_subject (remplacé par
+--                   party_account_tax_exemption). Antérieur : V1.4
+--                   (franchise 20/07, groupes 19/07) — l'en-tête était
+--                   resté en 1.2.
+-- Date           : 2026-07-24
 -- Réfs           : ADR-010 (PostgreSQL 16), ADR-005 (Politique de disparition —
 --                   quatre régimes), ADR-018 (BIGINT Identity + public_id,
 --                   précise ADR-008), Objectifs Must-Have Base de Données
@@ -23,8 +28,8 @@
 -- Tables sources legacy remplacées : ost_amicale, ost_client,
 -- ost_com_fournisseur, ost_user (partiellement), sourcecontact
 -- Hors périmètre (voir sujets-reportes.md) : pricing/remises/marges,
--- plafond & solde, point de vente, tags commerciaux, RBAC fin,
--- le "vrai" CRM (leads/opportunities/pipeline/activities)
+-- point de vente, RBAC fin, le "vrai" CRM (leads/opportunities/pipeline/
+-- activities). Plafond & exonérations : construits ici (balayage 24/07).
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
@@ -112,6 +117,15 @@ CREATE TABLE party_account (
     -- Cache de lecture (dénormalisation assumée pour la performance, cf. note)
     logo_url           VARCHAR(500), -- copie du file_path du document actif de type 'logo'
 
+    -- Devises par défaut (balayage Party 24/07) : DÉFAUTS de saisie et
+    -- d'affichage, jamais des contraintes. settlement_balance a pour clé
+    -- (compte, rôle, devise) : un même client peut avoir simultanément un
+    -- solde en EUR et un solde en USD. La case legacy « Forcer la devise »
+    -- est SUPPRIMÉE — elle n'existait que parce que le legacy imposait une
+    -- devise unique par client ; cette contrainte n'existe plus.
+    display_currency_code  VARCHAR(3) REFERENCES ref_currency(code), -- espace client
+    billing_currency_code  VARCHAR(3) REFERENCES ref_currency(code), -- facturation par défaut
+
     -- Audit trail (ADR-011)
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -126,6 +140,8 @@ CREATE TABLE party_account (
 COMMENT ON TABLE party_account IS 'Tiers unifié (pattern "Party") : remplace ost_amicale + ost_client + ost_com_fournisseur + partie identité de ost_user. NOTE ADRESSE : voir party_account_address, plus de champ adresse plat ici (besoin multi-adresses confirmé par l''historique ost_client : adresse/delivery_adresse/adressedomiciliation).';
 COMMENT ON COLUMN party_account.nature IS 'Nature juridique : person ou organization. Détermine quelle table identity est renseignée.';
 COMMENT ON COLUMN party_account.parent_account_id IS 'Sous-compte B2B : agence mère gère plafond/pricing de ses sous-agences (logique déléguée au module Pricing/Finance)';
+COMMENT ON COLUMN party_account.display_currency_code IS 'Devise d''affichage préférée (espace client). DÉFAUT de saisie/affichage, jamais une contrainte de solde.';
+COMMENT ON COLUMN party_account.billing_currency_code IS 'Devise de facturation proposée par défaut. Distincte de display_currency_code : consulter et être facturé sont deux actes différents.';
 COMMENT ON CONSTRAINT ck_party_account_email_format ON party_account IS 'Garde-fou DB uniquement (défense en profondeur) — la validation métier réelle vit dans le Domain layer.';
 
 CREATE UNIQUE INDEX uq_party_account_email_active ON party_account (lower(email))
@@ -238,7 +254,7 @@ CREATE INDEX idx_party_account_role_lookup ON party_account_role(role_code, acco
 -- Volontairement minimale : uniquement ce qui a du sens pour TOUT
 -- compte de nature person, sans exception rare.
 -- CIN/passeport/permis -> party_account_document (cycle de vie propre).
--- birth_date/marriage_date -> party_account_attribute (JSONB, usage rare).
+-- Champs rares / sporadiques -> party_account_attribute (JSONB soupape).
 -- ============================================================
 CREATE TABLE party_account_person_identity (
     account_id  BIGINT PRIMARY KEY REFERENCES party_account(id),
@@ -261,13 +277,24 @@ CREATE TABLE party_account_organization_identity (
     tax_id           VARCHAR(50),   -- ex matriculeFiscale
     trade_register   VARCHAR(50),   -- ex registreCommercie
     legal_form_code  VARCHAR(30),   -- vers référentiel dédié à créer si besoin (voir sujets-reportes.md)
-    is_vat_subject   BOOLEAN NOT NULL DEFAULT false,
+    -- Comptes comptables (balayage Party 24/07) : servent UNIQUEMENT à
+    -- l'export Excel vers le comptable externe. Aucune écriture comptable
+    -- dans le système. L'utilisateur ne connaît pas leur usage exact côté
+    -- comptabilité — NE PAS leur inventer de sémantique ni de contrainte.
+    -- Nom accounting_account_code aligné sur cash_bank_account.
+    accounting_account_code   VARCHAR(30), -- compte collectif (ex '411000')
+    third_party_account_code  VARCHAR(30), -- compte tiers individuel
     website          VARCHAR(255),
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by       BIGINT REFERENCES party_account(id),
     updated_by       BIGINT REFERENCES party_account(id)
 );
+
+COMMENT ON COLUMN party_account_organization_identity.accounting_account_code IS
+'Compte collectif pour export Excel vers le comptable externe UNIQUEMENT. Aucune écriture dans le système — ne pas inventer de sémantique ni de contrainte.';
+COMMENT ON COLUMN party_account_organization_identity.third_party_account_code IS
+'Compte tiers individuel pour export Excel vers le comptable externe UNIQUEMENT. Aucune écriture dans le système — ne pas inventer de sémantique ni de contrainte.';
 
 CREATE TRIGGER trg_party_org_identity_updated_at BEFORE UPDATE ON party_account_organization_identity
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -356,10 +383,14 @@ CREATE INDEX idx_party_account_function_code ON party_account_function(function_
 
 -- ============================================================
 -- party_account_attribute : soupape anti-dette technique (JSONB)
--- Une ligne par compte. Contient notamment birth_date/marriage_date
--- (usage trop rare pour justifier une colonne dédiée en V1).
--- Attribut qui devient stable/interrogé fréquemment -> à promouvoir
--- en colonne typée dans la table d'extension concernée.
+-- Une ligne par compte. Champs rares / sporadiques qui ne justifient
+-- PAS une colonne typée toujours-NULL sur une table jointe en masse
+-- (party_account / extensions d'identité). Attribut qui devient
+-- stable et interrogé fréquemment -> à promouvoir en colonne typée
+-- dans la table d'extension concernée.
+-- ⚠️ Ce n'est PAS un EAV générique ni un fourre-tout « autre_config »
+-- (rejeté §14) : c'est une soupape volontairement étroite pour éviter
+-- de polluer le schéma avec des colonnes quasi jamais renseignées.
 -- ============================================================
 CREATE TABLE party_account_attribute (
     account_id  BIGINT PRIMARY KEY REFERENCES party_account(id),
@@ -367,6 +398,9 @@ CREATE TABLE party_account_attribute (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_by  BIGINT REFERENCES party_account(id)
 );
+
+COMMENT ON TABLE party_account_attribute IS
+'Soupape JSONB pour champs rares d''un compte (éviter des colonnes toujours-NULL sur les tables lues en masse). PAS un EAV générique ni un autre_config — un attribut devenu stable doit être promu en colonne typée.';
 
 CREATE INDEX idx_party_account_attribute_gin ON party_account_attribute USING GIN (attributes);
 
@@ -591,3 +625,171 @@ COMMENT ON TABLE party_account_group_member IS 'Appartenance compte <-> groupe, 
 
 CREATE UNIQUE INDEX uq_party_account_group_member_active ON party_account_group_member(account_id, group_id) WHERE valid_to IS NULL;
 CREATE INDEX idx_party_account_group_member_lookup ON party_account_group_member(group_id, account_id) WHERE valid_to IS NULL;
+
+-- ============================================================
+-- EXONÉRATIONS FISCALES (balayage Party 24/07 — ferme §69)
+-- Party porte ce qu'on décide SUR un tiers ; Facturation/Règlements
+-- LIRONT. Les deux types (TVA, timbre) sont INDÉPENDANTS. Une
+-- exonération couvre TOUTE l'activité (pas de dimension service).
+-- Remplace party_account_organization_identity.is_vat_subject
+-- (supprimé : un particulier peut aussi être exonéré).
+-- ============================================================
+CREATE TABLE party_tax_exemption_type (
+    code        VARCHAR(30) PRIMARY KEY,
+    sort_order  SMALLINT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE party_tax_exemption_type IS 'Types d''exonération fiscale (vat, stamp_duty). Libellés dans party_tax_exemption_type_translation. Modèle A.';
+
+INSERT INTO party_tax_exemption_type (code, sort_order) VALUES
+    ('vat',         0),
+    ('stamp_duty',  1);
+
+CREATE TABLE party_tax_exemption_type_translation (
+    exemption_type_code  VARCHAR(30) NOT NULL REFERENCES party_tax_exemption_type(code),
+    language_code        VARCHAR(5) NOT NULL REFERENCES ref_language(code),
+    label                VARCHAR(100) NOT NULL,
+    description          TEXT,
+    PRIMARY KEY (exemption_type_code, language_code)
+);
+
+INSERT INTO party_tax_exemption_type_translation (exemption_type_code, language_code, label) VALUES
+    ('vat',        'en', 'VAT exemption'),
+    ('vat',        'fr', 'Exonération de TVA'),
+    ('vat',        'ar', 'إعفاء من الأداء على القيمة المضافة'),
+    ('stamp_duty', 'en', 'Stamp duty exemption'),
+    ('stamp_duty', 'fr', 'Exonération de timbre fiscal'),
+    ('stamp_duty', 'ar', 'إعفاء من معلوم الطابع الجبائي');
+
+CREATE TABLE party_account_tax_exemption (
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    public_id            UUID NOT NULL DEFAULT gen_random_uuid(),
+    account_id           BIGINT NOT NULL REFERENCES party_account(id),
+    exemption_type_code  VARCHAR(30) NOT NULL REFERENCES party_tax_exemption_type(code),
+    certificate_number   VARCHAR(100), -- figure souvent sur la facture
+    document_id          BIGINT REFERENCES party_account_document(id), -- scan, facultatif
+    valid_from           DATE NOT NULL,
+    valid_to             DATE, -- NULL = exonération permanente ; renseigné = attestation datée
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by           BIGINT REFERENCES party_account(id),
+
+    CONSTRAINT chk_party_account_tax_exemption_period
+        CHECK (valid_to IS NULL OR valid_to > valid_from)
+);
+
+COMMENT ON TABLE party_account_tax_exemption IS
+'Exonération fiscale d''un tiers (TVA ou timbre), indépendantes l''une de l''autre, couvrant toute l''activité. valid_to NULL = permanent ; valid_to renseigné = attestation qui expire. Un renouvellement = NOUVELLE ligne (historique conservé). N''importe quel tiers (person ou organization).';
+
+CREATE UNIQUE INDEX uq_party_account_tax_exemption_public_id ON party_account_tax_exemption(public_id);
+CREATE INDEX idx_party_account_tax_exemption_account
+    ON party_account_tax_exemption(account_id, exemption_type_code, valid_from);
+-- Pas d'index partiel « actif » avec CURRENT_DATE : non IMMUTABLE en PostgreSQL.
+-- Le filtrage valid_to IS NULL OR valid_to > current_date se fait en requête.
+
+-- ============================================================
+-- AFFECTATIONS DE RESPONSABLES (balayage Party 24/07)
+-- DISTINCTE de party_account_function : celle-ci dit « cette personne
+-- travaille dans cette organisation » ; celle-là dit « cette personne
+-- de chez nous est responsable de ce client ». Affectation GLOBALE
+-- (pas par bureau), MULTIPLE par type, historisée (rendement agents §29).
+-- ============================================================
+CREATE TABLE party_assignment_type (
+    code        VARCHAR(30) PRIMARY KEY,
+    sort_order  SMALLINT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE party_assignment_type IS 'Types d''affectation de responsable (commercial, collection). Libellés dans party_assignment_type_translation. Modèle A.';
+
+INSERT INTO party_assignment_type (code, sort_order) VALUES
+    ('commercial',  0),
+    ('collection',  1);
+
+CREATE TABLE party_assignment_type_translation (
+    assignment_type_code  VARCHAR(30) NOT NULL REFERENCES party_assignment_type(code),
+    language_code         VARCHAR(5) NOT NULL REFERENCES ref_language(code),
+    label                 VARCHAR(100) NOT NULL,
+    description           TEXT,
+    PRIMARY KEY (assignment_type_code, language_code)
+);
+
+INSERT INTO party_assignment_type_translation (assignment_type_code, language_code, label) VALUES
+    ('commercial', 'en', 'Sales manager'),
+    ('commercial', 'fr', 'Responsable commercial'),
+    ('commercial', 'ar', 'مسؤول تجاري'),
+    ('collection', 'en', 'Collection manager'),
+    ('collection', 'fr', 'Responsable recouvrement'),
+    ('collection', 'ar', 'مسؤول التحصيل');
+
+CREATE TABLE party_account_manager_assignment (
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    account_id           BIGINT NOT NULL REFERENCES party_account(id), -- le client suivi
+    manager_account_id   BIGINT NOT NULL REFERENCES party_account(id), -- la personne de l'équipe
+    assignment_type_code VARCHAR(30) NOT NULL REFERENCES party_assignment_type(code),
+    valid_from           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    valid_to             TIMESTAMPTZ, -- NULL = affectation active
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by           BIGINT REFERENCES party_account(id)
+);
+
+COMMENT ON TABLE party_account_manager_assignment IS
+'Affectation historisée d''un responsable (commercial / recouvrement) à un client. Plusieurs responsables par type autorisés. Globale au client, pas par bureau. Un changement de portefeuille ferme la ligne (valid_to) et en crée une nouvelle — jamais d''écrasement.';
+
+CREATE INDEX idx_party_account_manager_assignment_account
+    ON party_account_manager_assignment(account_id, assignment_type_code)
+    WHERE valid_to IS NULL;
+CREATE INDEX idx_party_account_manager_assignment_manager
+    ON party_account_manager_assignment(manager_account_id)
+    WHERE valid_to IS NULL;
+
+-- ============================================================
+-- PLAFOND / AUTORISATION DE DÉCOUVERT (balayage Party 24/07 — ferme §2)
+-- UNE SEULE table pour plafond permanent ET rallonge temporaire
+-- (valid_to NULL vs renseigné). PAR DEVISE, jamais converti. PAS de
+-- ventilation par service (abandonné : dépendrait de la qualité du
+-- lettrage). Formule Domain :
+--   disponible = solde grand livre (devise) + plafond + rallonges valides
+-- ============================================================
+CREATE TABLE party_account_credit_limit (
+    id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    public_id      UUID NOT NULL DEFAULT gen_random_uuid(),
+    account_id     BIGINT NOT NULL REFERENCES party_account(id),
+    currency_code  VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
+    amount_minor   BIGINT NOT NULL CHECK (amount_minor > 0),
+    valid_from     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    valid_to       TIMESTAMPTZ, -- NULL = permanent ; renseigné = rallonge qui expire
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by     BIGINT REFERENCES party_account(id)
+);
+
+COMMENT ON TABLE party_account_credit_limit IS
+'Autorisation de découvert / plafond par devise. valid_to NULL = permanent ; valid_to renseigné = rallonge temporaire (ex solde temporaire legacy). Plusieurs lignes simultanées OK (plafond + rallonge). Pas de dimension service. Calcul de capacité côté Domain, pas en base.';
+
+CREATE UNIQUE INDEX uq_party_account_credit_limit_public_id ON party_account_credit_limit(public_id);
+CREATE INDEX idx_party_account_credit_limit_account
+    ON party_account_credit_limit(account_id, currency_code, valid_from);
+
+-- ============================================================
+-- POLITIQUE COMMERCIALE PAR COMPTE (balayage Party 24/07)
+-- Colonnes explicites TYPÉES, PAS de JSON (§14). Absence de ligne =
+-- comportement par défaut. Priorité Domain (base ne fait que stocker) :
+--   solde insuffisant + block_when_insufficient_balance -> REFUS
+--   solde insuffisant sans la case -> EN DEMANDE, motif insufficient_balance
+--   solde suffisant + force_on_request -> EN DEMANDE, motif account_policy
+--   solde suffisant sans rien -> confirmation normale
+-- ============================================================
+CREATE TABLE party_account_commercial_policy (
+    account_id                        BIGINT PRIMARY KEY REFERENCES party_account(id),
+    force_on_request                  BOOLEAN NOT NULL DEFAULT false,
+    block_when_insufficient_balance   BOOLEAN NOT NULL DEFAULT false,
+    updated_at                        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_by                        BIGINT REFERENCES party_account(id)
+);
+
+COMMENT ON TABLE party_account_commercial_policy IS
+'Politique commerciale d''un compte (colonnes typées, pas de JSON). force_on_request = toujours en demande (motif account_policy). block_when_insufficient_balance = refus si solde insuffisant (ferme DISABLE_PAYMENT_WITHOUT_BALANCE §14). Absence de ligne = défauts.';
+
+CREATE TRIGGER trg_party_account_commercial_policy_updated_at
+    BEFORE UPDATE ON party_account_commercial_policy
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();

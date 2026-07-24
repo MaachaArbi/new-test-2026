@@ -251,7 +251,8 @@ INSERT INTO booking_on_request_reason (code, approval_type, sort_order) VALUES
     ('min_stay_not_met',       'supplier', 2),
     ('stop_sales',             'supplier', 3),
     ('insufficient_balance',   'internal', 4),
-    ('room_on_request',        'supplier', 5); -- raison générique, non détaillée (confirmé sur donnée réelle : "Chambre sur demande" sans motif précis)
+    ('room_on_request',        'supplier', 5), -- raison générique, non détaillée (confirmé sur donnée réelle : "Chambre sur demande" sans motif précis)
+    ('account_policy',         'internal', 6); -- politique commerciale du compte (force_on_request, balayage Party 24/07)
 
 CREATE TABLE booking_on_request_reason_translation (
     reason_code    VARCHAR(30) NOT NULL REFERENCES booking_on_request_reason(code),
@@ -259,6 +260,13 @@ CREATE TABLE booking_on_request_reason_translation (
     label          VARCHAR(100) NOT NULL,
     PRIMARY KEY (reason_code, language_code)
 );
+
+-- Traductions de account_policy (les 6 raisons antérieures n'avaient pas
+-- de seed de traduction dans ce fichier — écart historique non corrigé ici).
+INSERT INTO booking_on_request_reason_translation (reason_code, language_code, label) VALUES
+    ('account_policy', 'en', 'Account commercial policy'),
+    ('account_policy', 'fr', 'Politique commerciale du compte'),
+    ('account_policy', 'ar', 'سياسة الحساب التجارية');
 
 -- ============================================================
 -- booking_on_request_flag : raison(s) de mise "sur demande"
