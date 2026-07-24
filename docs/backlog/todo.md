@@ -10,6 +10,9 @@
 - [x] Liste paginée Party (`GET /api/v1/party-accounts`) — DBAL / ADR-003 — **clos**
 - [x] Update/delete PartyAccount HTTP (`PATCH` + `DELETE` soft) — **clos**
 
+- [ ] **Arbitrage pilote DB requis** — colonne `party_account_organization_identity.is_vat_subject` (85/87 lignes à `true`) : décider du report vers `party_account_tax_exemption` (règle de correspondance exacte à définir) avant tout DROP. Détail : `docs/journal/2026-07-24-alignement-is-vat-subject.md`.
+- [ ] **Migration de rattrapage Party/Core** — runtime en retard sur `reference/schemas/` (9 tables Party manquantes, 4 colonnes manquantes, 3 colonnes orphelines dont `is_vat_subject`, seed `party_account_group_type` désynchronisé, Core Auth avancée jamais migré : 6 tables + 2 colonnes manquantes). Party/Core importés par SQL direct le 21/07, jamais rattrapés depuis. Détail : `docs/journal/2026-07-24-alignement-is-vat-subject.md`.
+
 ## Booking
 
 - [x] `booking_folder` — Domain + Application Create + Infrastructure (mapping Doctrine, soft-delete) — **clos**
