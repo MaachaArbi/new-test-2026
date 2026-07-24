@@ -288,11 +288,74 @@ phpunit : OK — Tests: 397, Assertions: 2681, PHPUnit Notices: 2
 phpcpd : ÉCART préexistant — exit 1, 5 clones / 130 lignes (inchangé)
 ```
 
+## Correctif placement triggers
+
+**Régression** constatée par le pilote DB en rejouant la chaîne après `63dd92d` :
+les 2 fonctions + 2 triggers 2FA étaient dans `diff-core-auth-avancee.sql` (étape 7),
+alors que `trg_config_protect_mfa_issuer` porte sur `config_application_setting`
+(créée à l'étape 15). La chaîne échouait :
+`psql:diff-core-auth-avancee.sql:173: ERROR: relation "config_application_setting" does not exist`.
+
+**Correctif** : bloc déplacé tel quel vers la **fin** de
+`schema-permissions-config-v1.sql`, avec commentaire d'interdiction de re-rangements
+futurs. À l'étape 15, `core_mfa_totp` (étape 7) et `config_application_setting`
+coexistent — seul point valide de la chaîne.
+
+Aucune migration runtime (tables toujours absentes en prod runtime).
+
+### Rejeu chaîne 16/16 (base vierge `ostravel_chain_verify`, `ON_ERROR_STOP=1`)
+
+```text
+=== STEP 1/16: schema-ref-common.sql ===
+OK step 1
+=== STEP 2/16: schema-party-account-v1.sql ===
+OK step 2
+=== STEP 3/16: schema-log-v1.sql ===
+OK step 3
+=== STEP 4/16: schema-core-identity-v1.sql ===
+OK step 4
+=== STEP 5/16: schema-sales-point-v1.sql ===
+OK step 5
+=== STEP 6/16: diff-party-franchise.sql ===
+OK step 6
+=== STEP 7/16: diff-core-auth-avancee.sql ===
+OK step 7
+=== STEP 8/16: schema-ref-static-v1.sql ===
+OK step 8
+=== STEP 9/16: schema-booking-v1.sql ===
+OK step 9
+=== STEP 10/16: schema-settlement-v1.sql ===
+OK step 10
+=== STEP 11/16: schema-cash-management-v1.sql ===
+OK step 11
+=== STEP 12/16: schema-invoicing-v1.sql ===
+OK step 12
+=== STEP 13/16: schema-product-catalogue-v1.sql ===
+OK step 13
+=== STEP 14/16: schema-pricing-v1.sql ===
+OK step 14
+=== STEP 15/16: schema-permissions-config-v1.sql ===
+OK step 15
+=== STEP 16/16: schema-provider-integration-v1.sql ===
+OK step 16
+=== TABLE COUNT ===
+293
+=== TRIGGERS MFA ===
+            tgname             |          relname           
+-------------------------------+----------------------------
+ trg_config_protect_mfa_issuer | config_application_setting
+ trg_core_mfa_require_issuer   | core_mfa_totp
+(2 rows)
+```
+
+**Résultat : 16/16, 0 erreur, 293 tables.**
+
 ## Conclusion
 
 **Conforme** pour les 4 colonnes présentes en base (defaults NULL sur parent booking +
 partitions, address_type, minor_unit, instrument_tracking_mode) ; seeds devises OK ;
-4/4 scénarios triggers PASS en harness.
+4/4 scénarios triggers PASS en harness ; chaîne reference/ **16/16 / 293 tables** après
+correctif de placement.
 
 **Écarts / notes (sans correction unilatérale) :**
 1. `booking_payment`, `core_permission`, `config_application_setting`, `core_mfa_totp`

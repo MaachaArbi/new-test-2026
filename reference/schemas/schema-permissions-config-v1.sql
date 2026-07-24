@@ -356,3 +356,50 @@ CREATE TABLE config_application_setting (
 );
 
 INSERT INTO config_application_setting (id) VALUES (1);
+
+-- ============================================================
+-- Garantie EN BASE : mfa_issuer_name (audit valeurs par défaut 24/07)
+--
+-- PLACEMENT OBLIGATOIRE ICI (fin de schema-permissions-config-v1.sql,
+-- étape 15 de la chaîne 00-INDEX) — NE PAS « ranger » dans
+-- diff-core-auth-avancee.sql (étape 7) ni ailleurs par souci de
+-- cohérence apparente MFA.
+--
+-- Pourquoi : trg_config_protect_mfa_issuer porte sur
+-- config_application_setting (créée juste au-dessus) ET lit
+-- core_mfa_totp (créée à l'étape 7). À l'étape 15 seulement, les
+-- DEUX tables existent. Placer le bloc à l'étape 7 fait échouer la
+-- chaîne (relation config_application_setting does not exist) —
+-- régression constatée au rejeu 24/07, corrigée le même jour.
+-- ============================================================
+
+-- Trigger A : interdire d'ACTIVER le 2FA sans issuer renseigné
+CREATE OR REPLACE FUNCTION core_mfa_require_issuer() RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM config_application_setting
+                   WHERE id = 1 AND btrim(coalesce(mfa_issuer_name,'')) <> '') THEN
+        RAISE EXCEPTION 'Activation 2FA refusee : config_application_setting.mfa_issuer_name doit etre renseigne au prealable (nom affiche dans l''application d''authentification de l''utilisateur).'
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_core_mfa_require_issuer
+    BEFORE INSERT OR UPDATE OF is_enabled ON core_mfa_totp
+    FOR EACH ROW WHEN (NEW.is_enabled)
+    EXECUTE FUNCTION core_mfa_require_issuer();
+
+-- Trigger B : interdire d'EFFACER l'issuer si des 2FA sont deja actifs
+CREATE OR REPLACE FUNCTION config_protect_mfa_issuer() RETURNS TRIGGER AS $$
+BEGIN
+    IF btrim(coalesce(NEW.mfa_issuer_name,'')) = ''
+       AND EXISTS (SELECT 1 FROM core_mfa_totp WHERE is_enabled) THEN
+        RAISE EXCEPTION 'Effacement refuse : mfa_issuer_name ne peut pas etre vide tant que des utilisateurs ont le 2FA actif.'
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_config_protect_mfa_issuer
+    BEFORE UPDATE OF mfa_issuer_name ON config_application_setting
+    FOR EACH ROW EXECUTE FUNCTION config_protect_mfa_issuer();
