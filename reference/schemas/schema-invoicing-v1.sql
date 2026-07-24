@@ -35,10 +35,12 @@ INSERT INTO invoicing_tax_type (code, label) VALUES
     ('vat',   'Value Added Tax'),
     ('fodec', 'Fonds de Développement de la Compétitivité (fournisseur uniquement)');
 
--- Taux par pays, historisé dans le temps (rejoint sujets-reportes.md #34).
+-- Taux par pays, historisé dans le temps (§34 clos le 24/07 : défaut par
+-- type de service dans invoicing_service_type_default_tax).
 -- Un taux couvre une période [valid_from, valid_to). valid_to NULL = taux
 -- courant. Le système doit supporter tous les pays, pas seulement la
--- Tunisie (confirmé explicitement par l'utilisateur).
+-- Tunisie (confirmé explicitement par l'utilisateur). AUCUN SEED — les
+-- taux sont du paramétrage client (ADR-004).
 CREATE TABLE invoicing_tax_rate (
     id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     public_id     UUID NOT NULL DEFAULT gen_random_uuid(),
@@ -61,6 +63,37 @@ COMMENT ON TABLE invoicing_tax_rate IS
 CREATE INDEX idx_invoicing_tax_rate_lookup
     ON invoicing_tax_rate(tax_type_code, country_id, valid_from);
 CREATE UNIQUE INDEX uq_invoicing_tax_rate_public_id ON invoicing_tax_rate(public_id);
+
+-- Défaut de TVA proposé à la facturation selon le type de service Booking.
+-- Vit CÔTÉ FACTURATION (pas sur booking_service_type) : Booking enregistre
+-- toujours en TTC et n'a pas à connaître la TVA (décision utilisateur 24/07,
+-- clôture partielle §34). Ordre de chaîne : booking étape 9, invoicing
+-- étape 12 — une FK inverse booking→invoicing serait impossible à l'étape 9.
+--
+-- Absence de ligne = aucun défaut (Mice / ResaBooking legacy). Les deux
+-- colonnes métier sont NOT NULL : taux et nature vont toujours par paire
+-- dans le legacy (« 7.00% (TVA sur le total) »), jamais l'un sans l'autre.
+-- Le pays n'apparaît PAS ici : invoicing_tax_rate porte déjà country_id.
+-- AUCUN SEED : comme invoicing_tax_rate, paramétrage propre à chaque client
+-- (ADR-004, un serveur = un client).
+CREATE TABLE invoicing_service_type_default_tax (
+    service_type_code  VARCHAR(30) PRIMARY KEY REFERENCES booking_service_type(code),
+    tax_rate_id        BIGINT NOT NULL REFERENCES invoicing_tax_rate(id),
+    tax_calc_method    VARCHAR(12) NOT NULL CHECK (tax_calc_method IN ('total', 'commission')),
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE invoicing_service_type_default_tax IS
+'Défaut de TVA (taux + nature) proposé à la facturation pour un type de service.
+ Absence de ligne = aucun défaut. Jamais une contrainte : l''utilisateur peut
+ modifier taux ET nature à l''émission. La résolution « client exonéré /
+ prestation à l''étranger / défaut » vit dans le Domain PHP, pas ici
+ (modele-conceptuel-facturation.md). Exonération client : sujets-reportes.md §69.';
+
+CREATE TRIGGER trg_invoicing_service_type_default_tax_updated_at
+    BEFORE UPDATE ON invoicing_service_type_default_tax
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- Le timbre fiscal : montant FIXE par document (pas un taux), historisé
 -- dans le temps, par pays (1 DT en Tunisie actuellement, variable).

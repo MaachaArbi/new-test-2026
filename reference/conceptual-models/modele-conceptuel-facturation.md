@@ -67,12 +67,42 @@ Une ligne libre **pose une écriture nouvelle** dans le grand livre au moment de
 
 ## TVA
 
-- La vente d'une réservation est **toujours TTC**.
-- Taux multiples selon pays (Tunisie : 0 %, 7 %, 19 % actuellement, mais le système doit supporter tous les pays — table de taux avec historique dans le temps, jamais codé en dur).
-- **Deux formules de calcul possibles, choisies par ligne**, selon le service et le mode de vente (qui facture qui) :
-  - **TVA sur le total** : l'agence facture l'intégralité du montant au client (cas où le client paie tout à l'agence).
-  - **TVA sur la commission** : l'agence ne facture que sa commission, le fournisseur facturant directement le client pour le reste (taux souvent différent, ex. 19 % au lieu de 7 % en Tunisie).
-- Le taux et la base de calcul retenus sont **stockés par ligne facture**, à titre informatif et pour recalcul, jamais recalculés dynamiquement depuis Booking après coup.
+- La vente d'une réservation est **toujours TTC**. Booking n'a pas à connaître la TVA.
+- Taux multiples selon pays (Tunisie : 0 %, 7 %, 19 % actuellement, mais le système doit supporter tous les pays — table de taux avec historique dans le temps, jamais codé en dur). Plusieurs taux peuvent coexister pour un même pays à la même date (`invoicing_tax_rate` — index de recherche **non unique**).
+- **Deux formules de calcul possibles, choisies par ligne**, selon le service et le mode de vente :
+  - **TVA sur le total** (`tax_calc_method = 'total'`) : l'agence facture l'intégralité du montant au client.
+  - **TVA sur la commission** (`tax_calc_method = 'commission'`) : l'agence ne facture que sa commission (« Vente − Achat »).
+- Le taux et la base de calcul retenus sont **stockés par ligne facture** (`tax_rate_id`, `tax_base_minor`, `tax_amount_minor`), figés à l'émission — jamais recalculés dynamiquement depuis Booking après coup.
+- **Défaut par type de service** (`invoicing_service_type_default_tax`, §34 / 24/07) : proposition initiale (taux + nature), jamais une contrainte. Absence de ligne = aucun défaut. Vit côté Facturation, pas sur `booking_service_type` (Booking = TTC ; ordre de chaîne booking→invoicing).
+
+### Répartition Base / Domain (décision 24/07)
+
+| Couche | Porte… | Motif |
+|---|---|---|
+| **Base** | Catalogue des taux (`invoicing_tax_rate`) + défaut par type de service (`invoicing_service_type_default_tax`) | Un taux codé en PHP imposerait un déploiement à chaque loi de finances et livrerait les mêmes taux à tous les clients (même erreur que `mfa_issuer_name DEFAULT 'MyGo'`, §65). |
+| **Domain** | La **résolution** du taux proposé | Règle fiscale structurelle, pas un paramètre client. |
+
+Ordre de résolution (à construire côté Domain Invoicing, pas encore de module PHP) :
+
+1. client exonéré → 0 *(indicateur d'exonération **absent** aujourd'hui — voir `sujets-reportes.md` §69)*
+2. sinon prestation à l'étranger → 0 (hors champ de la TVA locale ; déduit du pays de l'hébergement / prestation, pas d'un second type de service)
+3. sinon → le défaut du type de service (`invoicing_service_type_default_tax`)
+4. et dans tous les cas, l'utilisateur peut modifier **taux ET nature** à la facturation
+
+### Correspondance legacy (référence de paramétrage client)
+
+⚠️ **Pas 1 pour 1** avec les `booking_service_type` actuels. À titre indicatif pour qui paramétrera un client :
+
+| Produit legacy | Taux | Nature | Équivalent nouveau schéma |
+|---|---|---|---|
+| Location de voiture | 7 % | sur le total | `car_rental` → défaut `total` |
+| Séjour Hôtel à l'Étranger | 0 % | sur le total | **pas d'équivalent** — un seul type `hotel` ; l'étranger se déduit de `ref_accommodation.country_id` (règle Domain « hors champ ») |
+| Réservation Divers | 19 % | sur « Vente − Achat » | selon mapping métier local → défaut `commission` |
+| Transfert | 7 % | sur « Vente − Achat » | `transfer` → défaut `commission` |
+| Maritime | 18 % | sur « Vente − Achat » | `maritime` → défaut `commission` |
+| Mice, ResaBooking | *(aucun)* | — | n'existent pas comme types de service ; **absence de ligne** = aucun défaut |
+
+Aucun seed livré : comme `invoicing_tax_rate`, chaque client paramètre ses propres taux et défauts.
 
 ---
 
@@ -190,4 +220,4 @@ FK nullable en en-tête, reporting uniquement, aucune dépendance bloquante.
 - **Répartition automatique d'un avoir sur plusieurs factures distinctes** : jamais rencontré en pratique, choix utilisateur par défaut retenu (pas de règle système). À reconfronter au premier cas réel.
 - **Réémission après avoir sur split figé** : traitement en exception documentée, pas de mécanisme natif prévu en V1.
 - **Concurrence sur le compteur de numérotation** : le legacy (`GetNumInvoice`) n'a jamais révélé de problème en pratique, mais le volume actuel ne prouve pas l'absence de risque. Verrouillage transactionnel à valider par test de concurrence réel en sandbox avant mise en production.
-- **Taux de TVA/timbre/FODEC** : tables avec historique dans le temps, rejoint le sujet transverse déjà identifié (`sujets-reportes.md` #34, organisation des référentiels TVA/État).
+- **Taux de TVA/timbre/FODEC** : tables avec historique dans le temps + défaut par type de service (`invoicing_service_type_default_tax`) — §34 clos le 24/07. Exonération client : ouvert, voir `sujets-reportes.md` §69.

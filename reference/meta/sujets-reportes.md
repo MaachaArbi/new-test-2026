@@ -401,15 +401,20 @@ Commits : d460b89 (renommage), ad49457 (traçage du changement d'URLs d'API).
 
 ---
 
-## 34. Organisation transverse des référentiels du projet — TVA, État (reporté, 17/07)
+## 34. Organisation transverse des référentiels du projet — TVA, État — ✅ RÉSOLU le 24/07/2026
 
-**Origine** : en construisant ce module, l'utilisateur a exprimé l'intention de réorganiser à terme **tous les référentiels de tous les modules** en un seul endroit, catégorisés par thème, plutôt que chacun dans son module métier d'origine (approche actuelle).
+**Origine** : en construisant le module Facturation, l'utilisateur a exprimé l'intention de réorganiser à terme **tous les référentiels de tous les modules** en un seul endroit, catégorisés par thème, plutôt que chacun dans son module métier d'origine (approche actuelle).
 
-**Décision de cette session** : ne pas trancher cette question de fond dans le cadrage d'un module métier particulier — c'est un sujet transverse à tout le projet, qui mérite sa propre session dédiée. Deux référentiels concrets sont en attente de cet arbitrage :
-- **TVA** (taux, historique dans le temps, rattachement par produit/pays/type de prestation, usage réel dans le calcul) — sujet fiscal nécessitant son propre cadrage métier, probablement dans le contexte Règlements ou Facturation.
-- **État** (statut de traitement de réservation, sélectionné par l'équipe avec un commentaire libre pendant le traitement — voir point 35 ci-dessous).
+**Deux référentiels concrets étaient en attente** :
+- **TVA** (taux, historique, rattachement par produit/pays/type de prestation)
+- **État** (statut de traitement de réservation)
 
-**Note** : physiquement, toutes les tables vivent déjà dans la même base PostgreSQL — la question n'est pas technique mais organisationnelle/documentaire (regroupement dans un même `schema-*.sql` et/ou une vue d'ensemble transverse dans `00-INDEX.md`).
+**✅ Clos le 24/07/2026** :
+
+1. **Question organisationnelle** : déjà tranchée dans le texte du §34 lui-même (« la question n'est pas technique mais organisationnelle/documentaire »). Les ~76 référentiels du projet **ne sont pas déplacés** — le préfixe de module reste une information utile ; un troisième renommage massif après §39/§64 serait injustifié.
+2. **État** : résolu au §35 (`booking_processing_status` + `log_activity`).
+3. **TVA** : déjà construite à ~90 % (`tax_calc_method`, `tax_rate_id`, `tax_base_minor`/`tax_amount_minor` figés à l'émission ; plusieurs taux par pays/date acceptés). Seul le **défaut par type de service** manquait — ajouté dans `invoicing_service_type_default_tax` (côté Facturation, pas sur `booking_service_type` : Booking n'a pas à connaître la TVA). Voir `modele-conceptuel-facturation.md`.
+4. **Exonération client** : reste ouverte → nouveau point **§69**.
 
 ## 35. `État` — statut de traitement de réservation — ✅ RÉSOLU le 20/07/2026
 
@@ -871,4 +876,16 @@ Commit : ba96690.
 **Enjeu** : la documentation du schéma désigne le produit par le nom d'un client, ce qui prêtera à confusion pour toute personne rejoignant le projet. Le même problème avait été trouvé côté données (`mfa_issuer_name DEFAULT 'MyGo'`, corrigé au §65).
 
 **Résolu (24/07)** : formulation neutre retenue plutôt qu'un nom de produit — « ce projet » pour les énoncés de périmètre, « le système » pour les actions à l'exécution. Choix motivé par le fait que le nom commercial doit encore changer : le neutre ne périmera pas. ~17 occurrences reformulées phrase par phrase (pas de rechercher-remplacer, qui aurait produit des tournures fautives). Volontairement CONSERVÉES : les données client réelles (compte agence myGO dans src/ et tests/, content_provider dans pricing-test-data.sql), les archives datées (journaux, diffs historiques), et les entrées de backlog qui documentent ce problème (§65, §68) — les effacer aurait rendu le texte incompréhensible.
+
+## 69. Exonération de TVA par client — OUVERT (24/07/2026)
+
+**Origine** : clôture partielle §34 (défaut TVA par type de service). La règle de résolution Domain prévoit « client exonéré → taux 0 », mais `party_account` n'a aujourd'hui **aucun indicateur d'exonération** (il a un `tax_id`, rien qui dise qu'un client en est exempté).
+
+**Questions en attente (utilisateur)** :
+1. L'exonération est-elle un simple **oui/non**, ou dépend-elle du **type de prestation** ?
+2. Est-elle **permanente**, ou liée à une **attestation datée** (période de validité) ?
+
+**Risque tant que non traité** : sans cet indicateur, l'agent doit passer le taux à 0 manuellement à chaque facture — risque d'oubli et de TVA facturée à tort.
+
+**Hors périmètre immédiat** : ne pas anticiper la structure tant que les deux questions ci-dessus ne sont pas tranchées.
 
