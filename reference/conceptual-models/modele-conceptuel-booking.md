@@ -93,7 +93,7 @@ Autres : `channel_code`, `option_expiry_at` (BOOK_NOW_PAY_LATER, fixe), `trip_ty
 
 ## Décisions clés et justification
 
-1. **Partitionnement par `booking_date`**, PK composite `(id, booking_date)`. **Automatisation pg_partman non incluse** — PostgreSQL ne crée jamais de partition tout seul ; sans pg_partman, les nouvelles résas tombent silencieusement dans `booking_default` (fonctionne mais perd l'intérêt du partitionnement). À mettre en place avant production.
+1. **Partitionnement par `booking_date`**, PK composite `(id, booking_date)`. **pg_partman automatisé (§8, 24/07)** — pas de tranche DEFAULT (panne bruyante) ; étape obligatoire du déploiement avant première utilisation.
 2. **FK applicatives, pas SQL**, entre `booking` et ses tables filles (contrainte PostgreSQL sur table partitionnée).
 3. **`is_on_request` indépendant de `status_code`** — confirmé sur données réelles (`etat`/`surDemande`/`confirmationHotel` cohabitent en legacy).
 4. **`booking_on_request_flag` en 1-N**, pas une colonne unique — confirmé : une réservation peut cumuler plusieurs raisons simultanées (stock ET solde, par exemple).

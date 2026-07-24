@@ -21,6 +21,21 @@ curl -I http://127.0.0.1:8080/
 
 PostgreSQL : `127.0.0.1:5432` — API Nginx : `127.0.0.1:8080`
 
+### Déploiement BDD — pg_partman (§8, obligatoire)
+
+Après la chaîne des 16 schémas et **avant** la première utilisation :
+
+```bash
+docker compose exec -T postgres psql -U ostravel -d ostravel -v ON_ERROR_STOP=1 \
+  -f - < docker/postgres/sql/drop_default_partitions.sql
+docker compose exec -T postgres psql -U ostravel -d ostravel -v ON_ERROR_STOP=1 \
+  -f - < docker/postgres/sql/pg_partman_setup.sql
+```
+
+Détail : [`docs/decisions/2026-07-24-pg-partman-deploiement.md`](docs/decisions/2026-07-24-pg-partman-deploiement.md).
+Surveillance (seuil &lt; 2 mois d'avance) : [`docs/ops/pg-partman-surveillance.md`](docs/ops/pg-partman-surveillance.md).
+
+
 JWT : clés RSA dans `config/jwt/*.pem` (gitignorées). Générer via `lexik:jwt:generate-keypair`.
 Login : `POST /api/v1/auth/login` `{email,password}` → `{token}`.
 Bootstrap credential admin : `app:core:bootstrap-admin-credential <password>` (après `app:party:bootstrap-agency`).

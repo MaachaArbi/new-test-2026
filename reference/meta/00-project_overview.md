@@ -153,7 +153,7 @@ Détail complet : voir `01-architecture_decisions.md` (18 ADR). **Un chat pilote
 ### Base de Données
 1. Normalisation correcte : 3NF minimum, pas de duplication
 2. Contraintes d'intégrité fortes : FK, CHECK, UNIQUE, triggers
-3. Performance : index stratégiques, partitionnement dès le début (`booking_`, à automatiser via `pg_partman` avant prod)
+3. Performance : index stratégiques, partitionnement dès le début (`booking` et 3 autres — pg_partman intégré au déploiement, §8)
 4. Audit trail : **✅ construit le 20/07 (module Log transverse — `log_audit` + trigger générique `log_audit_trigger()`, ADR-006), voir `sujets-reportes.md` §48 point 2 (résolu)**
 5. Soft delete : **politique ADR-005 obsolète, ne correspond plus à ce qui a été réellement construit — point ouvert, voir `sujets-reportes.md` §48**
 6. Isolation stricte : 1 DB = 1 client (pas de RLS)
@@ -267,7 +267,7 @@ de base (Party, ref_static), jamais dupliqué au niveau du module consommateur.
 - [ ] Database queries < 50ms (P95)
 - [ ] Zero downtime deployments
 - [ ] Rollback < 5 minutes
-- [ ] `pg_partman` mis en place sur `booking_` avant production
+- [x] `pg_partman` mis en place sur les 4 tables partitionnées (§8, 24/07) — étape de déploiement obligatoire
 
 ### Business
 - [ ] Migration 100% sans perte de données (stratégie parallèle 2-3 mois, voir ci-dessus)

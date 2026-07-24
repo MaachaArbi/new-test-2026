@@ -105,7 +105,7 @@ CREATE TABLE log_audit (
     id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     entity_type       VARCHAR(30) NOT NULL REFERENCES log_entity_type(code),
     entity_id         BIGINT NOT NULL,
-    table_name        VARCHAR(100) NOT NULL, -- nom physique de la table Postgres modifiée -- un entity_type peut recouvrir plusieurs tables (ex: 'booking' -> booking, booking_charge, booking_traveler...). ATTENTION : sur une table partitionnée, c'est le nom de la PARTITION (ex: 'booking_y2026m07'), pas la table logique -- voir note sur log_audit_trigger()
+    table_name        VARCHAR(100) NOT NULL, -- nom physique de la table Postgres modifiée -- un entity_type peut recouvrir plusieurs tables (ex: 'booking' -> booking, booking_charge, booking_traveler...). ATTENTION : sur une table partitionnée, c'est le nom de la PARTITION (ex: 'booking_p20260701'), pas la table logique -- voir note sur log_audit_trigger()
     operation         VARCHAR(10) NOT NULL CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE')),
     before_data       JSONB, -- NULL si INSERT
     after_data        JSONB, -- NULL si DELETE
@@ -132,7 +132,7 @@ CREATE INDEX idx_log_audit_table ON log_audit(table_name, created_at DESC);
 -- Compatible tables partitionnées (PostgreSQL 11+ : un trigger ROW posé
 -- sur la table mère s'applique automatiquement à toutes les partitions).
 -- ATTENTION (vérifié en sandbox) : sur une table partitionnée, TG_TABLE_NAME
--- retourne le nom de la PARTITION physique (ex: 'booking_y2026m07'), pas le
+-- retourne le nom de la PARTITION physique (ex: 'booking_p20260701'), pas le
 -- nom logique 'booking' -- donc table_name se fragmente par partition pour
 -- booking. Toute requête de reporting sur log_audit groupant par table_name
 -- doit normaliser ce préfixe côté Application (ex: LIKE 'booking_%') plutôt

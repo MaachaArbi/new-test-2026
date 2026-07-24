@@ -487,14 +487,15 @@ COMMENT ON TABLE booking IS 'Pivot Booking : 1 ligne = 1 service = 1 fournisseur
 COMMENT ON COLUMN booking.booking_date IS 'Clé de partition : date de CRÉATION de la réservation (insertion monotone, adaptée au partitionnement). Ne pas confondre avec start_date/end_date (dates du séjour/service).';
 COMMENT ON COLUMN booking.price_breakdown IS 'Justificatif de calcul (barème appliqué, détail éventuel). Documentaire uniquement : jamais de SUM/GROUP BY dessus, perte sans impact métier. Si un besoin de reporting transverse structurel apparaît un jour, voir sujets-reportes.md (booking_charge, reporté).';
 
--- Partitions mensuelles (exemple pour la mise en route -- à automatiser
--- via pg_partman une fois en production, cf. ADR-016 "Setup pg_partman
--- nécessaire"). Partition catch-all pour éviter tout échec d'insert
--- hors bornes en attendant l'automatisation.
-CREATE TABLE booking_y2026m07 PARTITION OF booking FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
-CREATE TABLE booking_y2026m08 PARTITION OF booking FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
-CREATE TABLE booking_y2026m09 PARTITION OF booking FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
-CREATE TABLE booking_default   PARTITION OF booking DEFAULT;
+-- Partitions mensuelles bootstrap (3 mois) — noms convention pg_partman
+-- (`_pYYYYMMDD` = borne basse). pg_partman prend le relais ensuite
+-- (étape OBLIGATOIRE du déploiement, avant première utilisation — §8).
+-- Pas de tranche DEFAULT : choix délibéré (§8). Une tranche manquante doit provoquer un
+-- rejet immédiat et visible plutôt qu'une accumulation silencieuse impossible à
+-- réorganiser ensuite. La couverture est garantie par pg_partman.
+CREATE TABLE booking_p20260701 PARTITION OF booking FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+CREATE TABLE booking_p20260801 PARTITION OF booking FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+CREATE TABLE booking_p20260901 PARTITION OF booking FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
 
 -- NOTE : PostgreSQL exige que tout index UNIQUE sur une table partitionnée
 -- inclue la colonne de partition. uq_booking_public_id porte donc sur
@@ -1100,11 +1101,12 @@ CREATE INDEX idx_booking_provider_snapshot_booking ON booking_provider_snapshot(
 --    party_account_office, fonction set_updated_at()) et
 --    schema-ref-common.sql (ref_language, ref_currency) exécutés au
 --    préalable.
--- 9. Partitions de booking créées ici à titre d'exemple pour la mise
---    en route (3 mois + 1 partition catch-all DEFAULT). À automatiser
---    via pg_partman avant la mise en production (cf. ADR-016).
---    ATTENTION : booking_default ne doit jamais accumuler durablement
---    de lignes -- surveiller et créer les partitions futures à l'avance.
+-- 9. Partitions de booking : 3 mois bootstrap figés (p20260701..p20260901,
+--    convention de nommage pg_partman). Sans tranche DEFAULT (§8) : une
+--    tranche manquante REJETTE l'écriture. pg_partman est une étape
+--    OBLIGATOIRE du déploiement (avant première utilisation), pas une
+--    tâche de maintenance ultérieure — cf.
+--    docs/decisions/2026-07-24-pg-partman-deploiement.md.
 -- 10. MAPPING DE MIGRATION -- ost_sht_reservation.etat (legacy, 3 valeurs
 --    rigides : 1=Enregistré, 2=Validée, 3=Annulée) vers booking.status_code :
 --    1 -> 'draft', 2 -> 'confirmed', 3 -> 'cancelled'. Logique d'ETL au

@@ -61,8 +61,20 @@ Document vivant. Chaque sujet volontairement écarté du périmètre en cours do
 ## 7. RGPD / règles de suppression définitive
 **À trancher** : politique de purge (délai, périmètre, cascade sur `party_account_document`, `core_credential`, `booking_provider_snapshot`...).
 
-## 8. Stratégie d'indexation détaillée / volumétrie réelle
-**À trancher** : au fil de la montée en charge, revoir index (notamment `pg_trgm` sur `display_name`, **automatisation pg_partman pour `booking` — non encore mise en place, obligatoire avant production**).
+## 8. Stratégie d'indexation détaillée / volumétrie réelle — ✅ RÉSOLU (volet pg_partman) le 24/07/2026
+**Volet indexation / volumétrie** : au fil de la montée en charge, revoir index (notamment `pg_trgm` sur `display_name`) — reste ouvert, hors urgence prod.
+**✅ Volet pg_partman RÉSOLU le 24/07/2026** : automatisation des tranches + suppression des tranches DEFAULT (panne bruyante assumée).
+
+| Table | Avance | Rétention |
+|---|---|---|
+| `booking` | 3 mois | AUCUNE purge — historique commercial et fiscal |
+| `core_session` | 3 mois | 3 mois puis suppression |
+| `core_auth_attempt` | 3 mois | 3 mois puis suppression |
+| `provider_call_log` | 3 mois | AUCUNE purge automatique — gérée côté applicatif |
+
+Règle métier `provider_call_log` (**RÉVISABLE**, utilisateur 24/07) : un journal d'appel rattaché à une réservation n'est **JAMAIS** supprimé. Seuls les appels n'ayant pas abouti sont purgés après un mois. Purge assurée par l'application, pas par pg_partman.
+
+La mise en place de pg_partman fait désormais partie de la **procédure de déploiement** (après chaîne des schémas, avant première utilisation) — voir `docs/decisions/2026-07-24-pg-partman-deploiement.md`. Surveillance : `docs/ops/pg-partman-surveillance.md` (alerte si &lt; 2 mois d'avance).
 
 ## 9. Dédoublonnage à la migration — ✅ RÉSOLU (politique actée)
 **Décision actée** : migration sélective assumée — certaines données legacy seront abandonnées plutôt que migrées telles quelles. Cohérent avec la stratégie de migration en parallèle (§47) : seules les données de référence/mapping propres sont importées, jamais un mapping automatique aveugle du legacy.

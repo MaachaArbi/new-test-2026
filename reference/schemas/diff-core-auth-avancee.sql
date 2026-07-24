@@ -69,9 +69,15 @@ CREATE TABLE core_session (
     PRIMARY KEY (id, created_at)
 ) PARTITION BY RANGE (created_at);
 
-CREATE TABLE core_session_y2026m07 PARTITION OF core_session
+CREATE TABLE core_session_p20260701 PARTITION OF core_session
     FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
-CREATE TABLE core_session_default PARTITION OF core_session DEFAULT;
+CREATE TABLE core_session_p20260801 PARTITION OF core_session
+    FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+CREATE TABLE core_session_p20260901 PARTITION OF core_session
+    FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
+-- Pas de tranche DEFAULT : choix délibéré (§8). Une tranche manquante doit provoquer un
+-- rejet immédiat et visible plutôt qu'une accumulation silencieuse impossible à
+-- réorganiser ensuite. La couverture est garantie par pg_partman.
 
 CREATE INDEX idx_core_session_account_active ON core_session(account_id) WHERE is_revoked = false;
 CREATE INDEX idx_core_session_current_hash ON core_session(current_refresh_token_hash) WHERE is_revoked = false;
@@ -81,7 +87,7 @@ CREATE INDEX idx_core_session_current_hash ON core_session(current_refresh_token
 -- côté Application (128+ bits), pas une contrainte SQL. Trouvé par test de contrainte réelle en sandbox
 -- le 20/07/2026, décision : accepté tel quel plutôt que complexifier avec une table de lookup séparée.
 
-COMMENT ON TABLE core_session IS 'Sessions/refresh tokens, partitionnée par created_at (pg_partman à automatiser avant prod, même note que booking_). Rotation : previous_refresh_token_hash conservé une génération pour détecter la réutilisation (signal de compromission -> révocation de TOUTES les sessions actives du compte, décision actée en session).';
+COMMENT ON TABLE core_session IS 'Sessions/refresh tokens, partitionnée par created_at. Avance 3 mois + rétention 3 mois via pg_partman (§8). Pas de tranche DEFAULT (panne bruyante assumée). Rotation : previous_refresh_token_hash conservé une génération pour détecter la réutilisation (signal de compromission -> révocation de TOUTES les sessions actives du compte, décision actée en session).';
 
 -- ============================================================
 -- core_auth_attempt : tentatives d'authentification, réussies ET
@@ -101,9 +107,17 @@ CREATE TABLE core_auth_attempt (
     PRIMARY KEY (id, created_at)
 ) PARTITION BY RANGE (created_at);
 
-CREATE TABLE core_auth_attempt_y2026m07 PARTITION OF core_auth_attempt
+CREATE TABLE core_auth_attempt_p20260701 PARTITION OF core_auth_attempt
     FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
-CREATE TABLE core_auth_attempt_default PARTITION OF core_auth_attempt DEFAULT;
+CREATE TABLE core_auth_attempt_p20260801 PARTITION OF core_auth_attempt
+    FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+CREATE TABLE core_auth_attempt_p20260901 PARTITION OF core_auth_attempt
+    FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
+-- Pas de tranche DEFAULT : choix délibéré (§8). Une tranche manquante doit provoquer un
+-- rejet immédiat et visible plutôt qu'une accumulation silencieuse impossible à
+-- réorganiser ensuite. La couverture est garantie par pg_partman.
+
+COMMENT ON TABLE core_auth_attempt IS 'Tentatives d''authentification (succès et échecs), partitionnée par created_at. Avance 3 mois + rétention 3 mois via pg_partman (§8). Pas de tranche DEFAULT (panne bruyante assumée). Séparée de log_activity pour isoler le bruit d''un brute force.';
 
 CREATE INDEX idx_core_auth_attempt_account ON core_auth_attempt(account_id, created_at) WHERE account_id IS NOT NULL;
 CREATE INDEX idx_core_auth_attempt_identifier ON core_auth_attempt(identifier_attempted, created_at);

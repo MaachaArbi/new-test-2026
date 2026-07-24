@@ -295,8 +295,7 @@ CREATE TABLE provider_call_log (
     PRIMARY KEY (id, created_at)
 ) PARTITION BY RANGE (created_at);
 
-COMMENT ON TABLE provider_call_log IS 'Pointeur léger de corrélation vers le payload complet request/response, stocké HORS de cette base (API gateway/microservice séparé, sujets-reportes.md §44). AUCUN payload ici -- table volontairement minimale pour absorber un volume élevé (jusqu''à ~10M lignes/jour). purge_at porté PAR LIGNE, politique de rétention propre à chaque service/endpoint, entièrement pilotée par l''Application (pas de règle générale calculable en base).';
-
+COMMENT ON TABLE provider_call_log IS 'Pointeur léger de corrélation vers le payload complet request/response, stocké HORS de cette base (API gateway/microservice séparé, sujets-reportes.md §44). AUCUN payload ici -- table volontairement minimale pour absorber un volume élevé (jusqu''à ~10M lignes/jour). Avance 3 mois via pg_partman, AUCUNE purge automatique par pg_partman (§8). RÈGLE MÉTIER RÉVISABLE (utilisateur 24/07) : un journal rattaché à une réservation n''est JAMAIS supprimé ; seuls les appels n''ayant pas abouti sont purgés après un mois PAR L''APPLICATION. Pas de tranche DEFAULT (panne bruyante assumée). purge_at porté PAR LIGNE, politique de rétention propre à chaque service/endpoint.';
 -- Unicité de public_id sur table partitionnée : doit inclure la clé de
 -- partition (même contrainte technique que uq_booking_public_id).
 CREATE UNIQUE INDEX uq_provider_call_log_public_id ON provider_call_log(public_id, created_at);
@@ -307,17 +306,18 @@ CREATE INDEX idx_provider_call_log_entity ON provider_call_log(entity_type, enti
 CREATE INDEX idx_provider_call_log_status ON provider_call_log(status_code, created_at DESC);
 CREATE INDEX idx_provider_call_log_purge ON provider_call_log(purge_at);
 
--- Partitions mensuelles explicites (même pattern que booking) --
--- couvrant le mois courant + 2 mois à venir + DEFAULT pour tout le reste
--- (rattrapage). Le job de purge (hors DB, cohérent ADR-002) devra à la
--- fois supprimer les lignes où purge_at <= now() ET DROP les partitions
--- mensuelles anciennes devenues entièrement vides -- ne jamais se
--- contenter de les vider ligne par ligne à ce volume (confirmé en
--- session, point technique soulevé par le chat pilote).
-CREATE TABLE provider_call_log_y2026m07 PARTITION OF provider_call_log FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
-CREATE TABLE provider_call_log_y2026m08 PARTITION OF provider_call_log FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
-CREATE TABLE provider_call_log_y2026m09 PARTITION OF provider_call_log FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
-CREATE TABLE provider_call_log_default   PARTITION OF provider_call_log DEFAULT;
+-- Partitions mensuelles bootstrap (3 mois) — pg_partman prend le relais (§8).
+-- Pas de tranche DEFAULT : choix délibéré (§8). Une tranche manquante doit provoquer un
+-- rejet immédiat et visible plutôt qu'une accumulation silencieuse impossible à
+-- réorganiser ensuite. La couverture est garantie par pg_partman.
+--
+-- Rétention provider_call_log (RÉVISABLE, utilisateur 24/07) : AUCUNE purge
+-- automatique par pg_partman. Un journal d'appel rattaché à une réservation
+-- n'est JAMAIS supprimé. Seuls les appels n'ayant pas abouti sont purgés
+-- après un mois — purge ASSURÉE PAR L'APPLICATION, pas par pg_partman.
+CREATE TABLE provider_call_log_p20260701 PARTITION OF provider_call_log FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+CREATE TABLE provider_call_log_p20260801 PARTITION OF provider_call_log FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+CREATE TABLE provider_call_log_p20260901 PARTITION OF provider_call_log FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
 
 -- ============================================================================
 -- NOTES D'IMPLÉMENTATION

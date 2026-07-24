@@ -1,0 +1,3 @@
+# Maintenance pg_partman — toutes les heures (§8).
+# Porte ouverte pour d'autres tâches cron de vérification côté utilisateur.
+0 * * * * psql -U "${POSTGRES_USER:-ostravel}" -d "${POSTGRES_DB:-ostravel}" -v ON_ERROR_STOP=1 -c "SELECT partman.run_maintenance(p_jobmon := false);" >/proc/1/fd/1 2>/proc/1/fd/2

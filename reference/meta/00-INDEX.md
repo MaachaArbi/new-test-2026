@@ -131,7 +131,7 @@ Dépend de la distinction déjà actée (`sujets-reportes.md` §52) entre marge 
 - **Identifiants** : BIGINT identity + `public_id` UUID sur toutes les tables (ADR-018).
 - **Money** : BIGINT minor units (`ref_currency.minor_unit`), sauf `pricing_*` en `NUMERIC(12,4)` (nature différente : taux/marge, pas un montant transactionnel définitif).
 - **Isolation** : 1 serveur = 1 client, jamais de `tenant_id` (ADR-004).
-- **Partitionnement** : `booking_`, `core_session`, `core_auth_attempt` partitionnées par date. `pg_partman` à automatiser avant prod (jamais fait à ce jour).
+- **Partitionnement** : `booking`, `core_session`, `core_auth_attempt`, `provider_call_log` partitionnées par date. **pg_partman automatisé (§8, 24/07)** — étape obligatoire du déploiement ; pas de tranche DEFAULT (panne bruyante).
 - **Faits immuables** : Booking constate des faits datés ; Règlements projette ces faits dans son grand livre append-only. Règlements lit Booking, n'y écrit jamais.
 - **Grand livre Règlements** : append-only garanti par trigger. Snapshot `settlement_balance`. Toute correction = contre-passation datée.
 - **Cash Management** : même ADN que Règlements. Extension de référentiel par table compagnon 1-1 plutôt que réouverture du module propriétaire.
