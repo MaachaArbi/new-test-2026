@@ -1132,4 +1132,11 @@ CREATE INDEX idx_booking_provider_snapshot_booking ON booking_provider_snapshot(
 --    payeur. beneficiary_role de booking_settlement reste à 3 valeurs
 --    (fournisseur/main_agency/distributeur) -- l'amicale n'est
 --    jamais un bénéficiaire de marge, seulement un payeur éventuel.
+--
+-- FK différée (Party avant Booking) : party_account_credit_limit.service_type_code
+-- déclaré sans FK dans schema-party-account-v1.sql — même motif que
+-- cash_instrument_location vers cash_bank_account.
+ALTER TABLE party_account_credit_limit
+    ADD CONSTRAINT fk_party_account_credit_limit_service_type
+    FOREIGN KEY (service_type_code) REFERENCES booking_service_type(code);
 -- ============================================================

@@ -22,7 +22,8 @@ Document vivant. Chaque sujet volontairement écarté du périmètre en cours do
 ## 2. Plafond & solde (multi-devise, multi-produit, multi-bureau) — ✅ RÉSOLU le 24/07/2026 (plafond)
 **Origine** : `plafond`, `soldeTemporaire`, `dateExpirationSolde`, `compte_tiers` sur `ost_amicale`/`ost_client`.
 **Décision provisoire (obsolète)** : un plafond par devise et par produit, module dédié.
-**✅ Résolu le 24/07/2026 (balayage Party)** : table `party_account_credit_limit` — une seule table pour plafond permanent et rallonge temporaire (`valid_to`), **par devise**, sans ventilation par service. Formule Domain : `disponible = solde grand livre + plafond + rallonges valides`. Placement dans Party (« décision SUR un tiers »), pas Règlements. Voir `modele-conceptuel-party.md`. Le solde lui-même reste porté par `settlement_balance` (Règlements, déjà construit).
+**✅ Résolu le 24/07/2026 (balayage Party)** : table `party_account_credit_limit` — une seule table pour plafond permanent et rallonge temporaire (`valid_to`), **par devise**. Placement dans Party. Le solde reste porté par `settlement_balance`.
+**Nuance (même jour, fin de balayage)** : le plafond est finalement **ventilé par service** via `service_type_code` (NULL = général). Ce n'est **pas** un encours ventilé (qui aurait dépendu du lettrage) — **seul le découvert accordé** est ventilé ; le solde grand livre reste **global et partagé**. La ligne la plus précise **remplace** la générale (pas d'addition). Risque max = plus grand plafond, pas la somme. Contredit la formulation « sans ventilation par service » de la clôture initiale du matin.
 
 ## 2bis. Cash Management (comptes bancaires par bureau/devise) — ✅ RÉSOLU, voir point 21bis
 

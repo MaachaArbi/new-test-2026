@@ -59,9 +59,9 @@ INSERT INTO ref_cabin_class (oct_code) VALUES ('ECO');
 INSERT INTO party_account (nature, display_name) VALUES ('organization', 'LADYBIRD TRAVEL TOURS');
 INSERT INTO party_account (nature, display_name) VALUES ('organization', 'AUTRE AGENCE TEST');
 
--- Groupe d'affiliés -- Party, dimension 'commercial' (seule peuplée à
--- ce stade, cf. party-account-group-extension.diff)
-INSERT INTO party_account_group (group_type_code, name) VALUES ('commercial', 'Groupe Amicale 1');
+-- Groupe d'affiliés -- Party, dimension 'pricing' (types réels seedés
+-- 24/07 : contracting/pricing/collection/reporting ; 'commercial' retiré)
+INSERT INTO party_account_group (group_type_code, name) VALUES ('pricing', 'Groupe Amicale 1');
 INSERT INTO party_account_group_member (account_id, group_id)
     SELECT a.id, g.id FROM party_account a, party_account_group g
     WHERE a.display_name='AUTRE AGENCE TEST' AND g.name='Groupe Amicale 1';

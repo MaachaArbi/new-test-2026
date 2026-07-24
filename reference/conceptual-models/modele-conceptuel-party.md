@@ -1,6 +1,6 @@
 # Modèle Conceptuel — Module Party (tiers unifié)
 
-**Statut** : Figé (V1.5) — balayage confrontation legacy 24 juillet 2026 (V1.2 initiale 14/07 ; V1.4 groupes/franchise 19–20/07)
+**Statut** : Figé (V1.6) — corrections fin de balayage 24 juillet 2026 (V1.5 balayage legacy ; V1.2 initiale 14/07)
 **Anciennement nommé** : module `crm_` (renommé en `party_` le 14/07/2026 — voir décision ci-dessous)
 **Remplace** : `ost_amicale`, `ost_client`, `ost_com_fournisseur`, identité de `ost_user`
 **Convention de nommage** : préfixe par module (`party_`, `core_`, `ref_`).
@@ -33,7 +33,7 @@ Un tiers n'a pas de type fixe : il porte un ou plusieurs **rôles** qui évoluen
 | `party_account_attribute` | JSONB, une ligne/compte — soupape anti-dette technique (champs rares) |
 | `party_account_document` | Documents ET pièces d'identité versionnés dans le temps |
 | `party_account_office` | Extension 1-1 : marque qu'un compte est un bureau opérationnel (entité légale par pays), devise par défaut |
-| `party_account_office_relation` | Lien approuvé et historisé tiers↔bureau (client/fournisseur), obligatoire avant transaction |
+| `party_account_office_relation` | Lien historisé tiers↔bureau (période de validité) — **sans** workflow d'approbation (retirée 24/07) |
 | `party_tax_exemption_type` (+ trad.) / `party_account_tax_exemption` | Exonérations TVA / timbre, indépendantes, historisées |
 | `party_assignment_type` (+ trad.) / `party_account_manager_assignment` | Responsables commercial / recouvrement (distinct de `party_account_function`) |
 | `party_account_credit_limit` | Plafond / rallonge par devise (autorisation de découvert) |
@@ -68,10 +68,11 @@ Un tiers n'a pas de type fixe : il porte un ou plusieurs **rôles** qui évoluen
 12. **Adresses multi-valeurs dès le départ, pas différées** — l'ancien `ost_client` avait déjà 3 adresses distinctes (`adresse`, `delivery_adresse`, `adressedomiciliation`) : besoin prouvé, pas spéculatif. Migrer une colonne plate vers une table plus tard implique une vraie migration de données ; le faire maintenant, avant volume, est quasi gratuit.
 13. **Pas de NULL magique pour le contexte interne** — `party_account_function.organization_account_id` est toujours renseigné. Le contexte "interne" (staff back-office) pointe vers un `party_account` réel représentant l'agence exploitant la plateforme elle-même (à créer au bootstrap). Prépare aussi le futur module Facturation (identité légale de l'émetteur).
 14. **Fusion accès/fonction (`party_account_member` supprimée)** — l'ancienne notion d'"a le droit d'agir pour cette organisation, sans fonction précise" devient la fonction générique `member` dans `party_account_function`. Une seule table au lieu de deux quasi identiques, moins d'écriture dupliquée.
-15. **Multi-bureau (tenant multi-pays)** — un "bureau" (Tunisie, Algérie, France...) est un `party_account` comme n'importe quel tiers, pas une notion à part : il peut être client/fournisseur d'un autre bureau du même groupe. `party_account_office` marque juste "ce compte est un de mes bureaux" (devise par défaut, code). Le rattachement tiers↔bureau (`party_account_office_relation`) est **obligatoire** avant toute transaction, avec workflow d'approbation — la visibilité comptable entre bureaux (grand livre partagé ou non) est hors périmètre Party.
+15. **Multi-bureau (tenant multi-pays)** — un "bureau" (Tunisie, Algérie, France...) est un `party_account` comme n'importe quel tiers. `party_account_office` marque "ce compte est un de mes bureaux". Le rattachement tiers↔bureau (`party_account_office_relation`) est **conservé** (multi-bureaux réel chez ~20 % des clients) avec période de validité — **sans approbation** (retirée 24/07 : jamais pratiquée, aurait bloqué création+réservation immédiate). Visibilité comptable inter-bureaux hors périmètre Party.
 16. **Décisions sur un tiers vivent dans Party** (balayage 24/07) — exonérations fiscales, plafond/découvert, affectations de responsables, politique commerciale. Règle : « Party porte ce qu'on décide SUR un tiers ; Règlements porte ce qu'on constate AVEC lui. »
-17. **Plafond = autorisation de découvert par devise** — une seule table pour permanent et rallonge (`valid_to`). Formule Domain : `disponible = solde grand livre (devise) + plafond + rallonges valides`. Pas de ventilation par service. Le paiement libère de la capacité.
+17. **Plafond = autorisation de découvert par devise, optionnellement par service** — une seule table pour permanent/temporaire et général/service. **La ligne la plus précise remplace la générale** (pas d'addition). Seul le découvert est ventilé ; le solde grand livre reste **global**. Formule Domain : `disponible(service) = solde global + (plafond service s'il existe sinon général) + rallonge correspondante`. Risque max = plus grand plafond, pas la somme. FK `service_type_code` différée (posée dans Booking).
 18. **Affectations distinctes de `party_account_function`** — responsable commercial/recouvrement d'un client ≠ fonction exercée dans une organisation.
+19. **Types de groupe** (`contracting` / `pricing` / `collection` / `reporting`) — remplacent le type unique legacy qui forçait des préfixes de nom pour cloisonner les usages.
 
 ## Hors périmètre (volontairement, cf. `sujets-reportes.md`)
 

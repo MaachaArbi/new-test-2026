@@ -1,6 +1,6 @@
 # 00 — Index de la conception BDD (ERP Tourisme)
 
-**Dernière mise à jour** : 24 juillet 2026 (balayage Party V1.5 → **308 tables** ; §2/§69 clos, §70 ouvert. Antérieur : §34 TVA défaut → 300 tables)
+**Dernière mise à jour** : 24 juillet 2026 (Party V1.6 — retrait approbation, plafond par service, types de groupe ; **308 tables** inchangé. Antérieur : balayage Party V1.5)
 **À lire en premier** dans le Project pour se réorienter rapidement.
 
 ---
@@ -25,7 +25,7 @@ Exception explicite : **Booking, Contracting et les intégrations API/providers*
 
 | Domaine | Statut | Documents |
 |---|---|---|
-| **Party** (tiers unifié — ex-CRM) | ✅ V1.5 figée — réouvertures 19/07 (`party_account_group`), 20/07 (`franchise`) ; **balayage legacy 24/07** : devises, comptes export, exonérations, affectations, plafond, politique commerciale | `modele-conceptuel-party.md`, `schema-party-account-v1.sql`, `party-account-group-extension.diff`, `diff-party-franchise.sql` |
+| **Party** (tiers unifié — ex-CRM) | ✅ V1.6 figée — V1.5 balayage legacy 24/07 ; **V1.6 fin de balayage** : retrait approbation `office_relation`, plafond ventilé par service (`service_type_code`, FK différée Booking), types de groupe `contracting`/`pricing`/`collection`/`reporting` | `modele-conceptuel-party.md`, `schema-party-account-v1.sql`, `party-account-group-extension.diff`, `diff-party-franchise.sql` |
 | **Core** (identité/auth) | ✅ V1.2 figée — réouverte ponctuellement le 20/07 (Auth avancée : `core_credential_provider`, `core_session`, `core_auth_attempt`, `core_mfa_totp`, `core_mfa_recovery_code`, `party_role_security_policy`) | `schema-core-identity-v1.sql`, `diff-core-auth-avancee.sql` |
 | **Référentiel commun** (langues, devises) | ✅ V1.2 figée — étendue le 17/07 (`native_name`/`alpha3`/`oct_code`), **extension bakée dans la base le 22/07** (elle flottait encore comme diff non appliqué) | `schema-ref-common.sql`, `ref-common-hebergement-extension.diff` (baké) |
 | **Log** (journal d'activité + audit trail technique, transverse) | ✅ V1.0 figée, 20/07 — généralise `booking_log` (`sujets-reportes.md` §19), testé sur PostgreSQL réel (trigger générique posé sur `booking`, capture avant/après vérifiée, y compris le piège `TG_TABLE_NAME`/partition). **Étendue le 21/07** : `entity_type='provider_connection'` ajouté (voir Provider Integration) | `modele-conceptuel-log.md`, `schema-log-v1.sql`, `diff-booking-log-generalization.diff` |
@@ -40,7 +40,7 @@ Exception explicite : **Booking, Contracting et les intégrations API/providers*
 | **Permissions / Franchises / Documents-Emails / Configuration avancée** | ✅ V1.0 figée (20/07/2026) — RBAC dynamique opt-in inversé (ADR-017), franchises (`party_account_franchise`), moteur de documents/emails unifié, `config_application_setting` (singleton, anti-EAV). Testé sur PostgreSQL réel | `modele-conceptuel-permissions-franchise-config.md`, `schema-permissions-config-v1.sql`, `diff-party-franchise.sql`, `diff-core-auth-avancee.sql` |
 | **Provider Integration** (API IN — fournisseurs de contenu — + outils techniques SMS/emailing/paiement) | ✅ V1.0 figée (21/07/2026) — modèle "plugin" : le contrat de connexion (credentials/config) vit dans le manifeste OctaSoft, jamais recopié en base. Table unique `provider_connection` (CHECK croisés, garde-fou testé sous 5 scénarios de rejet), aucune unicité structurelle (désambiguïsation 100% Application, testé), `provider_call_log` = pointeur de corrélation partitionné mensuel (aucun payload). **API OUT et Channel Manager explicitement reportés.** Testé sur PostgreSQL réel, chaîne complète (16 étapes) | `modele-conceptuel-provider-integration.md`, `schema-provider-integration-v1.sql` |
 
-**308 tables au total** dans le schéma actuel (vérifié par exécution réelle de la chaîne complète le 24/07/2026, `ON_ERROR_STOP=1`, 16/16 sans erreur). Détail : 300 après §34 (TVA défaut), **+8** au balayage Party V1.5 (6 tables métier + 2 traductions : exonérations, affectations, plafond, politique).
+**308 tables au total** dans le schéma actuel (vérifié par exécution réelle de la chaîne complète le 24/07/2026, `ON_ERROR_STOP=1`, 16/16 sans erreur). Inchangé en V1.6 (aucune table ajoutée ni retirée). Détail : 300 après §34 (TVA défaut), **+8** au balayage Party V1.5.
 
 ---
 
@@ -99,7 +99,7 @@ Dépend de la distinction déjà actée (`sujets-reportes.md` §52) entre marge 
 15. `schema-permissions-config-v1.sql` — dépend de 2, 4
 16. `schema-provider-integration-v1.sql` — dépend de 2 (`party_account`, `party_account_office`), 8 (`content_provider`), 3 (`log_entity_type`, `log_audit_trigger()`)
 
-**Chaîne complète (16 étapes, 308 tables) revérifiée le 24/07/2026, `ON_ERROR_STOP=1`, 16/16 sans erreur, à partir des fichiers réellement présents dans le Project**.
+**Chaîne complète (16 étapes, 308 tables) revérifiée le 24/07/2026 (Party V1.6), `ON_ERROR_STOP=1`, 16/16 sans erreur, à partir des fichiers réellement présents dans le Project**.
 
 ---
 

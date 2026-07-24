@@ -8,14 +8,11 @@
 --                   module CRM (crm_lead, crm_opportunity, crm_pipeline...)
 --                   — d'où la nécessité de ne PAS utiliser le préfixe crm_
 --                   ici, pour éviter la collision de nom plus tard.
--- Version        : 1.5 - Balayage confrontation legacy (24/07/2026) :
---                   devises d'affichage/facturation, comptes comptables
---                   export, exonérations fiscales, affectations de
---                   responsables, plafond/découvert, politique commerciale ;
---                   retrait is_vat_subject (remplacé par
---                   party_account_tax_exemption). Antérieur : V1.4
---                   (franchise 20/07, groupes 19/07) — l'en-tête était
---                   resté en 1.2.
+-- Version        : 1.6 - Corrections fin de balayage (24/07/2026) :
+--                   retrait approbation office_relation ; plafond par
+--                   service (FK différée) ; types de groupe réels.
+--                   Antérieur V1.5 : balayage legacy (exonérations,
+--                   plafond, affectations, politique).
 -- Date           : 2026-07-24
 -- Réfs           : ADR-010 (PostgreSQL 16), ADR-005 (Politique de disparition —
 --                   quatre régimes), ADR-018 (BIGINT Identity + public_id,
@@ -464,13 +461,19 @@ CREATE TRIGGER trg_party_account_office_updated_at BEFORE UPDATE ON party_accoun
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
--- party_account_office_relation : lien approuvé et historisé entre un
--- tiers et un bureau. Obligatoire avant toute transaction (Booking) :
--- un client ne peut acheter que s'il est officiellement rattaché à un
--- bureau après approbation. relation_type = rôle du TIERS (account_id)
--- vis-à-vis du bureau : 'customer' (le tiers achète auprès du bureau) ou
--- 'supplier' (le tiers fournit le bureau). Cumulable : une agence
--- affiliée B2B peut être client de plusieurs bureaux à la fois.
+-- party_account_office_relation : lien historisé entre un tiers et un
+-- bureau. Conservé : ~20 % des clients travaillent avec plusieurs
+-- bureaux (souvent Algérie + Tunisie ; jusqu'à 6 pays) — sans ce
+-- rattachement, impossible de savoir quelle entité légale traite avec
+-- qui. relation_type = rôle du TIERS (account_id) vis-à-vis du bureau :
+-- 'customer' ou 'supplier'. Cumulable.
+--
+-- Approbation (is_approved / approved_at / approved_by) RETIRÉE le 24/07 :
+-- cette fonctionnalité N'EXISTAIT PAS dans le système legacy et n'a
+-- jamais correspondu à une pratique. Elle aurait gêné les agents
+-- (créer un client puis réserver dans la foulée impossible) sans rien
+-- protéger — validation purement administrative, faite par le commercial
+-- lui-même. NE PAS la rétablir « par prudence ».
 -- ============================================================
 CREATE TABLE party_account_office_relation (
     id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -478,16 +481,14 @@ CREATE TABLE party_account_office_relation (
     office_account_id     BIGINT NOT NULL REFERENCES party_account(id), -- le bureau concerné (porte party_account_office)
     relation_type            VARCHAR(30) NOT NULL REFERENCES party_role(code)
                                   CHECK (relation_type IN ('customer', 'supplier')),
-    is_approved                  BOOLEAN NOT NULL DEFAULT false,
-    approved_at                     TIMESTAMPTZ,
-    approved_by                        BIGINT REFERENCES party_account(id),
     valid_from                            TIMESTAMPTZ NOT NULL DEFAULT now(),
     valid_to                                TIMESTAMPTZ,
     created_at                                TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by                                  BIGINT REFERENCES party_account(id)
 );
 
-COMMENT ON TABLE party_account_office_relation IS 'Rattachement obligatoire tiers<->bureau, avec workflow d''approbation. La vérification "peut acheter" (is_approved=true, valid_to NULL) est portée par le futur module Booking, pas ici.';
+COMMENT ON TABLE party_account_office_relation IS
+'Rattachement historisé tiers<->bureau (période valid_from/valid_to). Pas d''approbation : retirée le 24/07 — jamais pratiquée dans le legacy, aurait bloqué la création+réservation immédiate sans rien protéger. NE PAS rétablir.';
 
 CREATE UNIQUE INDEX uq_party_office_relation_active
     ON party_account_office_relation(account_id, office_account_id, relation_type)
@@ -536,8 +537,10 @@ CREATE INDEX idx_party_office_relation_office ON party_account_office_relation(o
 --    party_account -> futur concept "point de vente", rattaché à un
 --    party_account_office (voir sujets-reportes.md point 3).
 -- 13. party_account_office_relation.office_account_id doit référencer un
---    party_account portant party_account_office -> règle applicative,
+--    party_account portant party_account_office — règle applicative,
 --    pas une contrainte SQL (même logique que la note 3 sur nature).
+--    Pas d'approbation sur ce rattachement (retirée 24/07 — voir COMMENT
+--    ON TABLE) : jamais pratiquée ; aurait bloqué création+réservation.
 -- ============================================================
 -- Réouverture ponctuelle documentée (19/07/2026), justifiée par la
 -- session Pricing : ferme le point 4 de sujets-reportes.md
@@ -580,9 +583,13 @@ CREATE TABLE party_account_group_type (
 );
 
 INSERT INTO party_account_group_type (code, sort_order) VALUES
-    ('commercial', 0);
+    ('contracting', 0),
+    ('pricing',     1),
+    ('collection',  2), -- même terme que party_assignment_type.collection
+    ('reporting',   3);
 
-COMMENT ON TABLE party_account_group_type IS 'Dimensions de regroupement de comptes, superposables (un compte peut appartenir à des groupes de plusieurs types simultanément). Seule la dimension ''commercial'' est peuplée à ce stade (besoin Pricing, session du 19/07/2026) -- extensible par simple ajout de ligne, sans migration.';
+COMMENT ON TABLE party_account_group_type IS
+'Dimensions de regroupement de comptes, superposables. Types seedés (24/07) : contracting, pricing, collection, reporting — remplacent le type unique legacy qui forçait des préfixes de nom (« Contracting_… », « Recouvrement_… ») pour éviter qu''un agent de recouvrement pollue la vue d''un agent de tarification. Pas de table de traduction (noms techniques back-office).';
 
 -- ------------------------------------------------------------
 CREATE TABLE party_account_group (
@@ -744,31 +751,49 @@ CREATE INDEX idx_party_account_manager_assignment_manager
     WHERE valid_to IS NULL;
 
 -- ============================================================
--- PLAFOND / AUTORISATION DE DÉCOUVERT (balayage Party 24/07 — ferme §2)
--- UNE SEULE table pour plafond permanent ET rallonge temporaire
--- (valid_to NULL vs renseigné). PAR DEVISE, jamais converti. PAS de
--- ventilation par service (abandonné : dépendrait de la qualité du
--- lettrage). Formule Domain :
---   disponible = solde grand livre (devise) + plafond + rallonges valides
+-- PLAFOND / AUTORISATION DE DÉCOUVERT (balayage Party 24/07 — ferme §2 ;
+-- dimension service réintroduite le 24/07 soir).
+-- UNE SEULE table pour : plafond général / par service, permanent /
+-- temporaire (4 cas via service_type_code NULL|set + valid_to NULL|daté).
+-- PAR DEVISE, jamais converti.
+--
+-- service_type_code : NULL = tous produits ; renseigné = ce service.
+-- FK vers booking_service_type IMPOSSIBLE ici (Party étape 2, Booking
+-- étape 9) — colonne sans FK, contrainte ajoutée dans schema-booking-v1.sql
+-- (même motif que cash_instrument_location → cash_bank_account).
+--
+-- RÈGLE : la ligne la plus précise REMPLACE la générale, elles ne
+-- s'additionnent PAS. Seul le DÉCOUVERT ACCORDÉ est ventilé par service ;
+-- le solde grand livre reste GLOBAL et partagé (aucun lettrage).
+--   disponible(service) = solde global (devise)
+--                       + plafond du service s'il existe, sinon général
+--                       + rallonge temporaire correspondante
+-- Risque total borné par le PLUS GRAND plafond, pas leur somme.
 -- ============================================================
 CREATE TABLE party_account_credit_limit (
-    id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    public_id      UUID NOT NULL DEFAULT gen_random_uuid(),
-    account_id     BIGINT NOT NULL REFERENCES party_account(id),
-    currency_code  VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
-    amount_minor   BIGINT NOT NULL CHECK (amount_minor > 0),
-    valid_from     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    valid_to       TIMESTAMPTZ, -- NULL = permanent ; renseigné = rallonge qui expire
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by     BIGINT REFERENCES party_account(id)
+    id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    public_id          UUID NOT NULL DEFAULT gen_random_uuid(),
+    account_id         BIGINT NOT NULL REFERENCES party_account(id),
+    currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
+    -- NULL = plafond/rallonge tous produits ; sinon code booking_service_type
+    -- (FK différée : voir schema-booking-v1.sql)
+    service_type_code  VARCHAR(30),
+    amount_minor       BIGINT NOT NULL CHECK (amount_minor > 0),
+    valid_from         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    valid_to           TIMESTAMPTZ, -- NULL = permanent ; renseigné = rallonge qui expire
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by         BIGINT REFERENCES party_account(id)
 );
 
 COMMENT ON TABLE party_account_credit_limit IS
-'Autorisation de découvert / plafond par devise. valid_to NULL = permanent ; valid_to renseigné = rallonge temporaire (ex solde temporaire legacy). Plusieurs lignes simultanées OK (plafond + rallonge). Pas de dimension service. Calcul de capacité côté Domain, pas en base.';
+'Autorisation de découvert par devise. service_type_code NULL = général ; renseigné = remplace le général pour ce service (pas d''addition). valid_to NULL = permanent ; daté = rallonge. Solde grand livre GLOBAL partagé — seul le découvert est ventilé. Risque max = plus grand plafond, pas la somme.';
+
+COMMENT ON COLUMN party_account_credit_limit.service_type_code IS
+'FK différée vers booking_service_type(code), posée dans schema-booking-v1.sql (ordre de chaîne Party avant Booking).';
 
 CREATE UNIQUE INDEX uq_party_account_credit_limit_public_id ON party_account_credit_limit(public_id);
 CREATE INDEX idx_party_account_credit_limit_account
-    ON party_account_credit_limit(account_id, currency_code, valid_from);
+    ON party_account_credit_limit(account_id, currency_code, service_type_code, valid_from);
 
 -- ============================================================
 -- POLITIQUE COMMERCIALE PAR COMPTE (balayage Party 24/07)
