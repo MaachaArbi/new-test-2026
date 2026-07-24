@@ -1,3 +1,7 @@
+> ⚠️ **OBSOLÈTE (24/07/2026)** — les URLs listées ici ont changé lors du renommage §39.
+> `/api/v1/reglements/...` est devenu `/api/v1/settlements/...`
+> Voir `docs/journal/2026-07-24-renommage-fr-en-identifiants.md`.
+
 ## Reprise à froid
 
 Journal — 2026-07-22 — Règlements : HTTP.

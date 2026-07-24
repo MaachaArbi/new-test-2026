@@ -280,6 +280,24 @@ phpunit : OK — Tests: 397, Assertions: 2681, PHPUnit Notices: 2
 phpcpd : ÉCART — exit 1, 5 clones / 130 lignes (préexistants : SettlementHttpSupport↔BookingHttpSupport, entités Settlement, BookingPayerSplit↔BookingSettlement)
 ```
 
+## Impact contrat d'API
+
+Effet de bord du renommage du namespace PHP `Reglements` → `Settlement` : les chemins
+HTTP ont suivi le même préfixe. **Aucune redirection** mise en place. **Aucun
+consommateur** au moment du changement (front pas encore branché sur l'API) —
+décision utilisateur, 24/07.
+
+| Avant (FR) | Après (EN) |
+|---|---|
+| `POST /api/v1/reglements/instruments` | `POST /api/v1/settlements/instruments` |
+| `POST /api/v1/reglements/instruments/{publicId}/credit` | `POST /api/v1/settlements/instruments/{publicId}/credit` |
+| `PATCH /api/v1/reglements/instruments/{publicId}/status` | `PATCH /api/v1/settlements/instruments/{publicId}/status` |
+| `POST /api/v1/reglements/matchings` | `POST /api/v1/settlements/matchings` |
+| `DELETE /api/v1/reglements/matchings/{publicId}` | `DELETE /api/v1/settlements/matchings/{publicId}` |
+| `GET /api/v1/party-accounts/{publicId}/reglements/balance` | `GET /api/v1/party-accounts/{publicId}/settlements/balance` |
+
+Archive datée des URLs d'origine : `docs/journal/2026-07-22-reglements-http.md` (bandeau obsolète).
+
 ## Conclusion
 
 **Conforme** sur structure (0 leftover FR), test fonctionnel transfer, grep hors valeurs/prose,
