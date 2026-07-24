@@ -932,7 +932,7 @@ CREATE TABLE cash_deposit_type (
 INSERT INTO cash_deposit_type (code, label) VALUES
     ('cheque',  'Remise de chèques'),
     ('lcn',     'Remise de lettres de change'),
-    ('especes', 'Remise d''espèces');
+    ('cash',    'Remise d''espèces');
 
 CREATE TABLE cash_deposit (
     id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

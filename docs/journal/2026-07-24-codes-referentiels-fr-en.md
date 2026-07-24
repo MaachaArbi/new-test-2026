@@ -205,3 +205,56 @@ phpcpd : échec préexistant connu (non bloqueur)
 1. `cash_bank_transaction_type` absente en runtime — codes EN seulement en reference/.
 2. Élargissement VARCHAR(20)→(40) routing rendu nécessaire par `external_transmission`.
 3. phpcpd préexistant.
+
+---
+
+## Clôture §64
+
+Oubli d’inventaire du pilote DB (pas de Cursor) : `cash_deposit_type` —
+renommage unique `especes` → `cash`. `cheque` et `lcn` inchangés (décision
+utilisateur 24/07). Règle migrations atomiques documentée.
+
+### PARTIE 1 — `especes` → `cash`
+
+- `reference/schemas/schema-cash-management-v1.sql` : seed mis à jour.
+- Runtime : `cash_deposit_type` **absente** (comme `cash_bank_transaction_type`)
+  → **pas** de migration runtime.
+- Aucune occurrence de `'especes'` dans `reference/`, `src/`, `tests/` après.
+- Aucun corps de fonction SQL ni PHP ne comparait `'especes'` en dur.
+
+### PARTIE 2 — trigger append-only (brut)
+
+```text
+              tgname               | etat  | tgenabled 
+-----------------------------------+-------+-----------
+ trg_settlement_ledger_no_mutation | ACTIF | O
+(1 row)
+
+ relname | tgname | tgenabled 
+---------+--------+-----------
+(0 rows)
+```
+
+Invariant confirmé ; aucune réactivation nécessaire. Aucun autre trigger désactivé.
+
+### PARTIE 3 — règle migrations atomiques
+
+Créé : `docs/decisions/2026-07-24-migrations-sql-atomiques.md`
+(architecte DB, constat vérification e20b21d).  
+`Version20260724140000` **non** réécrite (fait daté).
+
+### Vérifications clôture
+
+1. Trigger : ACTIF (ci-dessus).
+2. Chaîne verify `cash_deposit_type` :
+```text
+  code  
+--------
+ cash
+ cheque
+ lcn
+(3 rows)
+```
+3. `especes` : 0 occurrence reference/src/tests.
+4. Chaîne 16/16, 293 tables (`ostravel_chain_verify`, `ON_ERROR_STOP=1`).
+5. Qualité : phpstan OK ; deptrac Violations 0 ; phpunit OK.
