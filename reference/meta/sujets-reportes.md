@@ -297,7 +297,7 @@ Décision explicite de l'utilisateur, à rappeler dans chaque prompt de démarra
 - `content_provider` : entité fondatrice pour le futur module Provider Integration (module 3), à étendre par table compagnon — jamais recréer ni dupliquer.
 - `ref_property_category` (TYPE d'hébergement) : revirement assumé — colonne simple prévue au cadrage initial, devenue référentiel à part entière en cours de session. **Clarifié avec l'utilisateur le 18/07, dans ce chat pilote** : le cadrage initial ("aucune différence, à part chambre vs unité") portait sur les *attributs métier* de la typologie (effectivement identiques entre Hôtel/Villa/Appartement), pas sur son besoin de *synchronisation/évolutivité*. L'utilisateur a confirmé explicitement (18/07) que cette typologie a vocation à être enrichie via OctaSoft Static Data dans le futur (ex: nouveaux types comme "riad", "chalet"...) — ce qui justifie pleinement le référentiel à part plutôt qu'une colonne fermée. Revirement validé, pas de contradiction : les deux échanges répondaient à des questions différentes.
 - `ref_property_category` (TYPE) et `ref_property_rating` (CLASSEMENT) : deux référentiels indépendants, aucun lien structurel.
-- `rental_mode` (room/whole_unit) : porté par `ref_property_category`, pas par l'hébergement — référentiel interne MyGo, jamais fourni par OctaSoft.
+- `rental_mode` (room/whole_unit) : porté par `ref_property_category`, pas par l'hébergement — référentiel interne à ce projet, jamais fourni par OctaSoft.
 - Aucun mapping vocabulaire-fournisseur côté client (ex: board_type ↔ Webbeds) — résolu en amont par OctaSoft Static Data, données reçues déjà taguées avec le bon `oct_code`.
 - `ref_supplement.from_mmdd`/`to_mmdd` : plage récurrente annuelle en format compact `SMALLINT` (mois×100+jour), choisi pour la performance de lecture.
 - `ref_language`/`ref_currency` étendus de façon strictement additive (pas de doublon d'entité) — réouverture minimale documentée d'un module figé, aucune table existante référençant ces colonnes n'a été modifiée.
@@ -459,7 +459,7 @@ Commits : d460b89 (renommage), ad49457 (traçage du changement d'URLs d'API).
 **Décisions transverses actées pour tout le module** :
 - Test décisionnel Catalogue vs `ref_static` : contenu commercial propre (description/photo) → Catalogue ; lien booléen descriptif → `ref_static` extension additive.
 - Pas d'actif/inactif dans aucune fiche Catalogue (rôle du futur Contracting).
-- Pas de contenu web/CMS/SEO — migre vers un futur CMS, hors périmètre MyGo.
+- Pas de contenu web/CMS/SEO — migre vers un futur CMS, hors périmètre de ce projet.
 - Prudence sur les "catégories commerciales" au-dessus d'un produit : à valider contre une vraie donnée de production avant de construire (invalidé une fois sur véhicule, confirmé une fois sur transfert — catégorie de véhicule, cette fois-ci, bien réelle).
 - Zéro fonction PL/pgSQL de logique métier sur l'ensemble des 8 sous-modules (ADR-002 reconduit sans exception, y compris pour la génération du plan de sièges).
 
@@ -663,7 +663,7 @@ Analyse du chat "00-Main DEV Backend" (cadrage architecture Symfony), vérifiée
 
 **Origine** : dernier module du projet, dans sa partie API IN (fournisseurs de contenu) + outils techniques (SMS/emailing/paiement). Cadrage initial basé sur cinq captures legacy réelles (Algebratec, Leferry, BoosterBC, Brevo, clictopay), qui ont immédiatement invalidé l'hypothèse de départ d'une structure de connexion à peu près uniforme.
 
-**Découverte structurante (apportée par l'utilisateur en session, jamais évoquée avant)** : le client n'ajoute jamais un provider manuellement — il l'**installe** depuis un catalogue/marketplace (modèle explicitement comparé aux plugins WordPress), signe un accord commercial en amont (hors MyGo, future application de gestion de licence non conçue), puis ne renseigne que ses identifiants concrets. Bascule complète du modèle envisagé : le **contrat** de connexion (quels champs, quels types, quels défauts) vit dans un manifeste détenu par OctaSoft, **jamais recopié en base client** — MyGo ne stocke que les valeurs concrètes, validées côté Domain contre ce manifeste ("monde 1a" : `version_code` suffit, pas de snapshot du contrat lui-même).
+**Découverte structurante (apportée par l'utilisateur en session, jamais évoquée avant)** : le client n'ajoute jamais un provider manuellement — il l'**installe** depuis un catalogue/marketplace (modèle explicitement comparé aux plugins WordPress), signe un accord commercial en amont (hors périmètre de ce projet, future application de gestion de licence non conçue), puis ne renseigne que ses identifiants concrets. Bascule complète du modèle envisagé : le **contrat** de connexion (quels champs, quels types, quels défauts) vit dans un manifeste détenu par OctaSoft, **jamais recopié en base client** — le système ne stocke que les valeurs concrètes, validées côté Domain contre ce manifeste ("monde 1a" : `version_code` suffit, pas de snapshot du contrat lui-même).
 
 **Ce qui a été construit** (`schema-provider-integration-v1.sql`) :
 - `technical_service_category` / `technical_service_provider` : entité séparée de `content_provider`, jamais de `oct_code`, confirmé qu'aucun prestataire technique pur n'a de `party_account` fournisseur derrière.
@@ -699,7 +699,7 @@ Analyse du chat "00-Main DEV Backend" (cadrage architecture Symfony), vérifiée
 
 **Décision** : signalement pur, aucune structure construite ni anticipée dans ce module — pas de colonne `license_reference` sur `provider_connection`, cohérent avec la discipline du projet (pas de structure avant besoin réel cadré). Le sujet touche potentiellement RBAC/Permissions (déjà figé) autant que chaque module fonctionnel — nécessite une session de cadrage dédiée, transverse, quand le besoin sera prêt à être conçu.
 
-**Lien avec Provider Integration** : le parcours marketplace décrit (catalogue → commande → paiement → activation → configuration des credentials dans MyGo) reste valide comme contexte produit, mais la couche licence elle-même (commande, plan tarifaire, paiement) est confirmée comme une **application séparée**, non conçue dans ce Project.
+**Lien avec Provider Integration** : le parcours marketplace décrit (catalogue → commande → paiement → activation → configuration des credentials dans le système) reste valide comme contexte produit, mais la couche licence elle-même (commande, plan tarifaire, paiement) est confirmée comme une **application séparée**, non conçue dans ce Project.
 
 ## 59. 3e incident de désynchronisation documentaire — session Provider Integration (21/07/2026)
 
@@ -845,11 +845,11 @@ Commit : ba96690.
 
 **À vérifier avant de s'y engager** : le commentaire du schéma indique que `cash_external_transmission` suit « le même triptyque header/items que `cash_deposit` ». Le même défaut de conception existe donc peut-être à l'identique sur les dépôts en banque — élargir le périmètre en conséquence.
 
-## 68. Nom du produit dans les commentaires du schéma — OUVERT (24/07/2026)
+## 68. Nom du produit dans les commentaires du schéma — ✅ RÉSOLU le 24/07/2026
 
 **Constat** : plusieurs commentaires du schéma utilisent « MyGo » comme nom du produit (« distinction structurelle interne MyGo », « hors périmètre MyGo », « vocabulaire 100% local à MyGo »). Or l'utilisateur a précisé le 24/07 que **MyGo est le nom d'un de ses CLIENTS**, que l'application s'appelle actuellement **OsTravel**, et qu'il compte la renommer pour ce nouveau produit.
 
 **Enjeu** : la documentation du schéma désigne le produit par le nom d'un client, ce qui prêtera à confusion pour toute personne rejoignant le projet. Le même problème avait été trouvé côté données (`mfa_issuer_name DEFAULT 'MyGo'`, corrigé au §65).
 
-**À trancher** : attendre le nom définitif du nouveau produit avant de reprendre ces commentaires, ou adopter dès maintenant une formulation neutre (« le système », « l'ERP ») pour ne plus dépendre d'un nom.
+**Résolu (24/07)** : formulation neutre retenue plutôt qu'un nom de produit — « ce projet » pour les énoncés de périmètre, « le système » pour les actions à l'exécution. Choix motivé par le fait que le nom commercial doit encore changer : le neutre ne périmera pas. ~17 occurrences reformulées phrase par phrase (pas de rechercher-remplacer, qui aurait produit des tournures fautives). Volontairement CONSERVÉES : les données client réelles (compte agence myGO dans src/ et tests/, content_provider dans pricing-test-data.sql), les archives datées (journaux, diffs historiques), et les entrées de backlog qui documentent ce problème (§65, §68) — les effacer aurait rendu le texte incompréhensible.
 

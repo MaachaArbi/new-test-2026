@@ -20,7 +20,7 @@ Le legacy duplique un même en-tête de réservation (client, statut, timbre, re
 - **Le spécifique par service** → extensions 1-1 (hôtel, location voiture) ou 1-N (chambres, segments de transport)
 - **La composition du prix** → `booking_charge` (additif, compose le total)
 - **La répartition de la marge entre bénéficiaires** → `booking_settlement` (redécoupe ce qui est déjà compté, jamais additif)
-- **Le prix de revente d'un distributeur à SON client** → `booking_settlement.resale_price_amount` (purement informatif, hors périmètre financier de MyGo)
+- **Le prix de revente d'un distributeur à SON client** → `booking_settlement.resale_price_amount` (purement informatif, hors périmètre financier de ce projet)
 - **Qui paie** → `booking_payer_split`
 - **Le voyageur/conducteur** → `booking_traveler`
 

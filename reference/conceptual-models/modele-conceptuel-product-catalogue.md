@@ -39,7 +39,7 @@ Deux fiches indépendantes, extensions directes de `ref_accommodation` (aucun ni
 **Extension additive de `ref_static`** (réouverture ponctuelle documentée, `ref-static-accommodation-links.diff`) :
 - `ref_accommodation_amenity` / `_option` / `_location_type_link` / `_tag` : liaisons hôtel↔vocabulaire, pur descriptif — ferme le point ouvert #112 de `ref_static` (partiellement : `ref_hotel_chain` et `ref_supplement` restent non liés, non demandés en session)
 - `ref_accommodation_translation` : description courte traduisible de l'hôtel entier
-- **Thèmes abandonnés** : `ost_sht_hotels_themes` n'a pas de référentiel `ref_static`, et sa création a été explicitement refusée — cohérent avec le principe déjà acté que le contenu marketing/web n'a pas sa place ici (migre vers un futur CMS, hors périmètre MyGo)
+- **Thèmes abandonnés** : `ost_sht_hotels_themes` n'a pas de référentiel `ref_static`, et sa création a été explicitement refusée — cohérent avec le principe déjà acté que le contenu marketing/web n'a pas sa place ici (migre vers un futur CMS, hors périmètre de ce projet)
 
 ---
 

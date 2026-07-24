@@ -1,4 +1,4 @@
-# Architecture Decisions — Backend (OS-TRAVEL / MyGo)
+# Architecture Decisions — Backend (ERP Tourisme)
 
 **Statut** : Rédigé depuis zéro dans ce Project, sur la base d'une réflexion antérieure abandonnée (numérotation ADR reprise pour lisibilité, mais chaque décision est ré-examinée, pas recopiée).
 **Critère de décision** : Performance > Simplicité (solo + IA) > Qualité.

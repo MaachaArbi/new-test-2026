@@ -40,7 +40,7 @@ Conception neuve (cohérent avec le principe directeur acté le 16/07 pour tous 
 | `content_provider` | NOT NULL | Fournisseur de contenu (Hotelbeds/Webbeds/GNV...) — **entité fondatrice** pour Provider Integration |
 | `content_provider_language` | — | Langues dans lesquelles un fournisseur accepte d'être interrogé (jonction simple) |
 | `ref_board_type` | NOT NULL | Type de pension/arrangement (LS/LPD/DP/PC/All Inclusive) |
-| `ref_accommodation_rental_mode` | — (fixe, interne) | `room` / `whole_unit` — distinction structurelle MyGo, pas OctaSoft |
+| `ref_accommodation_rental_mode` | — (fixe, interne) | `room` / `whole_unit` — distinction structurelle propre à ce projet, pas OctaSoft |
 | `ref_property_category` | NOT NULL | **TYPE** d'hébergement (Hôtel/Villa/Appartement/Maison d'hôte) — porte `rental_mode_code` |
 | `ref_property_rating` | NOT NULL | **CLASSEMENT** en étoiles — indépendant de la catégorie |
 | `ref_accommodation` | NULLABLE | Hébergement lui-même — première entité avec ajout local |
@@ -79,7 +79,7 @@ Le cadrage initial (17/07, avant le début de la session de construction) actait
 Confirmé le 17/07 après question explicite : `ref_property_category` (Hôtel/Villa/Appartement/Maison d'hôte) et `ref_property_rating` (1 à 5 étoiles) sont deux référentiels **sans lien structurel**, chacun une FK séparée sur `ref_accommodation`. `stars_number` sur `ref_property_rating` est un simple raccourci d'affichage numérique (évite de parser le nom traduit), nullable pour les classements non numériques.
 
 ### 6. `rental_mode` porté par la catégorie, pas par l'hébergement
-Distinction "location par chambre" (`room`) vs "location à l'unité globale" (`whole_unit`), demandée dès le cadrage initial pour éviter le contournement legacy ("S+1"/"S+2" comme chambre unique). D'abord envisagée comme attribut de `ref_accommodation`, **déplacée sur `ref_property_category`** en cours de session (17/07) : chaque catégorie détermine son mode de location de façon déterministe (Hôtel→room, Villa/Appartement/Maison d'hôte→whole_unit) — évite un état incohérent (une Villa marquée `room` par erreur). `ref_accommodation_rental_mode` reste un référentiel fixe **interne à MyGo**, jamais fourni par OctaSoft.
+Distinction "location par chambre" (`room`) vs "location à l'unité globale" (`whole_unit`), demandée dès le cadrage initial pour éviter le contournement legacy ("S+1"/"S+2" comme chambre unique). D'abord envisagée comme attribut de `ref_accommodation`, **déplacée sur `ref_property_category`** en cours de session (17/07) : chaque catégorie détermine son mode de location de façon déterministe (Hôtel→room, Villa/Appartement/Maison d'hôte→whole_unit) — évite un état incohérent (une Villa marquée `room` par erreur). `ref_accommodation_rental_mode` reste un référentiel fixe **interne à ce projet**, jamais fourni par OctaSoft.
 Capacité descriptive (nombre de chambres pour le mode `whole_unit`) : reportée, voir Points ouverts.
 
 ### 7. Pas de mapping fournisseur côté client — le seul principe transverse du module

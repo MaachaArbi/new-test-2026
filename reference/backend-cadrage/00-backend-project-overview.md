@@ -1,4 +1,4 @@
-# Backend — Vue d'ensemble du projet (OS-TRAVEL / MyGo)
+# Backend — Vue d'ensemble du projet (ERP Tourisme)
 
 **Statut** : Document de cadrage — aucun code Symfony n'existe encore.
 **Rôle de ce document** : contexte pour Cursor / toute session de génération de code backend. À relire avant d'ouvrir une session de conception ou de code sur un module.

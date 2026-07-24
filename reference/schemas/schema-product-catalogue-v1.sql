@@ -22,7 +22,7 @@
 --   (nb adultes/enfants, lits) ; actif/inactif (rôle du futur module
 --   Contracting, qui choisira quelles chambres/pensions sont vendables
 --   par période) ; tout contenu web/CMS/SEO (slug, référencement --
---   migre vers une application CMS séparée, hors périmètre MyGo) ;
+--   migre vers une application CMS séparée, hors périmètre de ce projet) ;
 --   aucun prix nulle part dans ce module (Pricing/Contracting).
 -- ============================================================
 
@@ -138,7 +138,7 @@ COMMENT ON TABLE product_accommodation_board_translation IS 'Description commerc
 -- ============================================================
 -- PARTIE VÉHICULE (location de voiture) -- session du 18/07/2026
 -- Dépend de : rien côté ref_static/ref_common sauf ref_language
--- (vocabulaire 100% local à MyGo, jamais fourni par OctaSoft --
+-- (vocabulaire 100% local à ce projet, jamais fourni par OctaSoft --
 -- contrairement à l'hôtel).
 -- ============================================================
 

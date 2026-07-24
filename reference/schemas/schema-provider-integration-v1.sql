@@ -353,7 +353,7 @@ CREATE TABLE provider_call_log_default   PARTITION OF provider_call_log DEFAULT;
 -- 5. provider_call_log NE CONTIENT AUCUN PAYLOAD -- le store complet
 --    (request/response, fichiers téléchargeables) vit sur une API
 --    gateway/microservice séparé, non conçu dans ce Project (durcit
---    sujets-reportes.md §44). MyGo interroge cette gateway via
+--    sujets-reportes.md §44). Le système interroge cette gateway via
 --    correlation_id pour tout affichage détaillé -- dépendance à sa
 --    disponibilité ACCEPTÉE (confirmé en session).
 -- 6. RÉTENTION PAR LIGNE, PAS PAR TYPE : provider_call_log.purge_at

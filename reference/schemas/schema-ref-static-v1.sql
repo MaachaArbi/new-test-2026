@@ -256,7 +256,7 @@ CREATE TABLE ref_board_type_translation (
 COMMENT ON TABLE ref_board_type_translation IS 'Nom du type de pension par langue, fourni par OctaSoft Static Data.';
 
 -- ------------------------------------------------------------
--- ref_accommodation_rental_mode : distinction structurelle PROPRE à MyGo
+-- ref_accommodation_rental_mode : distinction structurelle PROPRE à ce projet
 -- (room vs whole_unit), PAS fournie par OctaSoft. Portée par la catégorie
 -- (ref_property_category.rental_mode_code), pas par l'hébergement lui-même
 -- (revirement acté 17/07). Référentiel fixe interne : pas de oct_code,
@@ -268,7 +268,7 @@ CREATE TABLE ref_accommodation_rental_mode (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-COMMENT ON TABLE ref_accommodation_rental_mode IS 'Distinction structurelle interne MyGo (room = vente par chambre/unité de stock typée ; whole_unit = vente de l''hébergement entier). Non fourni par OctaSoft. Référentiel fixe, pas de oct_code, pas d''ajout local.';
+COMMENT ON TABLE ref_accommodation_rental_mode IS 'Distinction structurelle interne à ce projet (room = vente par chambre/unité de stock typée ; whole_unit = vente de l''hébergement entier). Non fourni par OctaSoft. Référentiel fixe, pas de oct_code, pas d''ajout local.';
 
 INSERT INTO ref_accommodation_rental_mode (code, sort_order) VALUES
     ('room',       0),
@@ -727,7 +727,7 @@ CREATE TABLE ref_supplement_translation (
 -- PAS créé : décision explicite de ne pas ajouter de nouvelle entité,
 -- cohérente avec le principe acté par ailleurs qu'un "thème" (Famille,
 -- Romantique...) est un classement marketing web, migré vers le futur
--- CMS, hors périmètre MyGo -- pas un champ métier ou un critère de
+-- CMS, hors périmètre de ce projet -- pas un champ métier ou un critère de
 -- recherche technique. Abandon documenté, pas un oubli.
 -- ============================================================
 
