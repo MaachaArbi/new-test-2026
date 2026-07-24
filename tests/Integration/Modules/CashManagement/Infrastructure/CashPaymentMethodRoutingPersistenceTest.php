@@ -27,17 +27,17 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 {
     /** @var array<string, string> code => routing_type_code attendu (11 modes seedés) */
     private const SEEDED_ROUTING = [
-        'AD' => 'aucun',
-        'CB' => 'aucun',
-        'PE' => 'aucun',
-        'C' => 'caisse',
-        'LC' => 'caisse',
-        'E' => 'caisse',
-        'PC' => 'transmission_externe',
-        'V' => 'banque_directe',
-        'VE' => 'banque_directe',
-        'RC' => 'aucun',
-        'RI' => 'aucun',
+        'AD' => 'none',
+        'CB' => 'none',
+        'PE' => 'none',
+        'C' => 'cash_session',
+        'LC' => 'cash_session',
+        'E' => 'cash_session',
+        'PC' => 'external_transmission',
+        'V' => 'direct_bank',
+        'VE' => 'direct_bank',
+        'RC' => 'none',
+        'RI' => 'none',
     ];
 
     private UnitOfWork $unitOfWork;
@@ -100,7 +100,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
     public function test_seeded_routing_types_are_readable(): void
     {
-        foreach (['caisse', 'banque_directe', 'transmission_externe', 'aucun'] as $code) {
+        foreach (['cash_session', 'direct_bank', 'external_transmission', 'none'] as $code) {
             $type = $this->routingTypeRepository->findByCode($code);
             self::assertNotNull($type, $code);
             self::assertSame($code, $type->code());
@@ -139,7 +139,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         try {
             ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
                 paymentMethodId: $methodId,
-                routingTypeCode: 'aucun',
+                routingTypeCode: 'none',
                 instrumentTrackingMode: 'individual',
                 strictSourceIsolation: false,
             ));
@@ -158,7 +158,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         try {
             ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
                 paymentMethodId: $methodId,
-                routingTypeCode: 'caisse',
+                routingTypeCode: 'cash_session',
                 instrumentTrackingMode: 'not_applicable',
                 strictSourceIsolation: false,
             ));
@@ -176,7 +176,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
         $created = ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
             paymentMethodId: $methodId,
-            routingTypeCode: 'caisse',
+            routingTypeCode: 'cash_session',
             instrumentTrackingMode: 'individual',
             strictSourceIsolation: true,
             requiresCustodyCheck: true,
@@ -184,7 +184,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         ));
 
         self::assertSame($methodId, $created->paymentMethodId());
-        self::assertSame('caisse', $created->routingTypeCode());
+        self::assertSame('cash_session', $created->routingTypeCode());
         self::assertSame(InstrumentTrackingMode::Individual, $created->instrumentTrackingMode());
         self::assertTrue($created->strictSourceIsolation());
 
@@ -192,7 +192,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
         $reloaded = $this->routingRepository->findByPaymentMethodId($methodId);
         self::assertNotNull($reloaded);
-        self::assertSame('caisse', $reloaded->routingTypeCode());
+        self::assertSame('cash_session', $reloaded->routingTypeCode());
         self::assertSame(InstrumentTrackingMode::Individual, $reloaded->instrumentTrackingMode());
         self::assertTrue($reloaded->strictSourceIsolation());
         self::assertTrue($reloaded->requiresCustodyCheck());
@@ -208,7 +208,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         try {
             ($this->updateHandler)(new UpdateCashPaymentMethodRoutingCommand(
                 paymentMethodId: $methodId,
-                routingTypeCode: 'banque_directe',
+                routingTypeCode: 'direct_bank',
                 instrumentTrackingMode: 'not_applicable',
                 strictSourceIsolation: false,
                 requiresCustodyCheck: true,
@@ -222,7 +222,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         $this->em->clear();
         $reloaded = $this->routingRepository->findByPaymentMethodId($methodId);
         self::assertNotNull($reloaded);
-        self::assertSame('caisse', $reloaded->routingTypeCode());
+        self::assertSame('cash_session', $reloaded->routingTypeCode());
         self::assertSame(InstrumentTrackingMode::Individual, $reloaded->instrumentTrackingMode());
     }
 
@@ -235,7 +235,7 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
         try {
             ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
                 paymentMethodId: $methodId,
-                routingTypeCode: 'caisse',
+                routingTypeCode: 'cash_session',
                 instrumentTrackingMode: 'individual',
                 strictSourceIsolation: false,
             ));
@@ -251,27 +251,27 @@ final class CashPaymentMethodRoutingPersistenceTest extends KernelTestCase
 
         ($this->createHandler)(new CreateCashPaymentMethodRoutingCommand(
             paymentMethodId: $methodId,
-            routingTypeCode: 'caisse',
+            routingTypeCode: 'cash_session',
             instrumentTrackingMode: 'individual',
             strictSourceIsolation: false,
         ));
 
         $updated = ($this->updateHandler)(new UpdateCashPaymentMethodRoutingCommand(
             paymentMethodId: $methodId,
-            routingTypeCode: 'transmission_externe',
+            routingTypeCode: 'external_transmission',
             instrumentTrackingMode: 'individual',
             strictSourceIsolation: false,
             requiresCustodyCheck: false,
             isActive: true,
         ));
 
-        self::assertSame('transmission_externe', $updated->routingTypeCode());
+        self::assertSame('external_transmission', $updated->routingTypeCode());
         self::assertFalse($updated->requiresCustodyCheck());
 
         $this->em->clear();
         $reloaded = $this->routingRepository->findByPaymentMethodId($methodId);
         self::assertNotNull($reloaded);
-        self::assertSame('transmission_externe', $reloaded->routingTypeCode());
+        self::assertSame('external_transmission', $reloaded->routingTypeCode());
         self::assertFalse($reloaded->requiresCustodyCheck());
     }
 

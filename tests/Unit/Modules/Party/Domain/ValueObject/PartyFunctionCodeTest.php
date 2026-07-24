@@ -22,9 +22,9 @@ final class PartyFunctionCodeTest extends TestCase
     #[Test]
     public function it_trims_whitespace(): void
     {
-        $code = PartyFunctionCode::fromString('  gerant  ');
+        $code = PartyFunctionCode::fromString('  manager  ');
 
-        self::assertSame('gerant', $code->toString());
+        self::assertSame('manager', $code->toString());
     }
 
     #[Test]

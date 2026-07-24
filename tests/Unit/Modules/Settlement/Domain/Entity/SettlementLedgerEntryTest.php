@@ -17,7 +17,7 @@ final class SettlementLedgerEntryTest extends TestCase
         try {
             SettlementLedgerEntry::post(
                 partyAccountId: 1,
-                partyRole: InstrumentPartyRole::Client,
+                partyRole: InstrumentPartyRole::Customer,
                 currencyCode: 'TND',
                 entryTypeId: 1,
                 amountMinor: 0,
@@ -36,7 +36,7 @@ final class SettlementLedgerEntryTest extends TestCase
         try {
             SettlementLedgerEntry::post(
                 partyAccountId: 1,
-                partyRole: InstrumentPartyRole::Client,
+                partyRole: InstrumentPartyRole::Customer,
                 currencyCode: 'TND',
                 entryTypeId: 1,
                 amountMinor: 100,
@@ -53,7 +53,7 @@ final class SettlementLedgerEntryTest extends TestCase
     {
         $entry = SettlementLedgerEntry::post(
             partyAccountId: 5,
-            partyRole: InstrumentPartyRole::Fournisseur,
+            partyRole: InstrumentPartyRole::Supplier,
             currencyCode: 'eur',
             entryTypeId: 2,
             amountMinor: -500,

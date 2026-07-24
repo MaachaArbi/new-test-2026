@@ -99,7 +99,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         $settlement = ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: $beneficiaryId,
-            beneficiaryRole: BeneficiaryRole::Distributeur,
+            beneficiaryRole: BeneficiaryRole::Distributor,
             amountOwedMinor: 151_011,
             currencyCode: 'TND',
             amountSettledDirectMinor: 1_000,
@@ -119,7 +119,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         self::assertSame($id, $reloaded->id());
         self::assertSame($bookingId, $reloaded->bookingId());
         self::assertSame($beneficiaryId, $reloaded->beneficiaryAccountId());
-        self::assertSame(BeneficiaryRole::Distributeur, $reloaded->beneficiaryRole());
+        self::assertSame(BeneficiaryRole::Distributor, $reloaded->beneficiaryRole());
         self::assertSame(151_011, $reloaded->amountOwed()->amount());
         self::assertSame(1_000, $reloaded->amountSettledDirect()->amount());
         self::assertSame('50.500', $reloaded->rate()?->toString());
@@ -140,7 +140,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: $beneficiaryId,
-            beneficiaryRole: BeneficiaryRole::Fournisseur,
+            beneficiaryRole: BeneficiaryRole::Supplier,
             amountOwedMinor: 10_000,
             currencyCode: 'TND',
         ));
@@ -149,7 +149,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
             ($this->assignHandler)(new AssignBookingSettlementCommand(
                 bookingId: $bookingId,
                 beneficiaryAccountId: $beneficiaryId,
-                beneficiaryRole: BeneficiaryRole::Fournisseur,
+                beneficiaryRole: BeneficiaryRole::Supplier,
                 amountOwedMinor: 20_000,
                 currencyCode: 'TND',
             ));
@@ -168,14 +168,14 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: $beneficiaryId,
-            beneficiaryRole: BeneficiaryRole::AgencePrincipale,
+            beneficiaryRole: BeneficiaryRole::MainAgency,
             amountOwedMinor: 5_000,
             currencyCode: 'TND',
         ));
         ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: $beneficiaryId,
-            beneficiaryRole: BeneficiaryRole::Distributeur,
+            beneficiaryRole: BeneficiaryRole::Distributor,
             amountOwedMinor: 3_000,
             currencyCode: 'TND',
         ));
@@ -187,7 +187,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
             $actives,
         );
         sort($roles);
-        self::assertSame(['agence_principale', 'distributeur'], $roles);
+        self::assertSame(['distributor', 'main_agency'], $roles);
     }
 
     public function test_revoke_persists_valid_to_and_allows_reassign(): void
@@ -197,7 +197,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         $first = ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: $beneficiaryId,
-            beneficiaryRole: BeneficiaryRole::Distributeur,
+            beneficiaryRole: BeneficiaryRole::Distributor,
             amountOwedMinor: 8_000,
             currencyCode: 'TND',
         ));
@@ -218,7 +218,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         $second = ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: $beneficiaryId,
-            beneficiaryRole: BeneficiaryRole::Distributeur,
+            beneficiaryRole: BeneficiaryRole::Distributor,
             amountOwedMinor: 9_000,
             currencyCode: 'TND',
         ));
@@ -241,7 +241,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: $beneficiaryId,
-            beneficiaryRole: BeneficiaryRole::Distributeur,
+            beneficiaryRole: BeneficiaryRole::Distributor,
             amountOwedMinor: 25_000,
             currencyCode: 'TND',
             resalePriceAmountMinor: 40_000,
@@ -289,7 +289,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: $beneficiaryA,
-            beneficiaryRole: BeneficiaryRole::Distributeur,
+            beneficiaryRole: BeneficiaryRole::Distributor,
             amountOwedMinor: 1_000,
             currencyCode: 'TND',
             resalePriceAmountMinor: 10_000,
@@ -297,7 +297,7 @@ final class BookingSettlementPersistenceTest extends KernelTestCase
         ($this->assignHandler)(new AssignBookingSettlementCommand(
             bookingId: $bookingId,
             beneficiaryAccountId: (int) $beneficiaryB->id(),
-            beneficiaryRole: BeneficiaryRole::Distributeur,
+            beneficiaryRole: BeneficiaryRole::Distributor,
             amountOwedMinor: 2_000,
             currencyCode: 'TND',
             resalePriceAmountMinor: 20_000,

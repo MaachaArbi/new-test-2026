@@ -43,7 +43,7 @@ CREATE TABLE party_role_security_policy (
 );
 
 INSERT INTO party_role_security_policy (role_code, max_concurrent_sessions) VALUES
-    ('client', 2), ('internal_user', NULL), ('franchise', 3), ('fournisseur', NULL);
+    ('customer', 2), ('internal_user', NULL), ('franchise', 3), ('supplier', NULL);
 
 COMMENT ON TABLE party_role_security_policy IS 'Politique de sécurité par rôle structurel (party_role). Non délégable -- modifiable uniquement en interne (core.session_policy.manage, RBAC).';
 

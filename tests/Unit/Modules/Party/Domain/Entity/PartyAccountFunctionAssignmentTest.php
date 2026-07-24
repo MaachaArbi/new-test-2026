@@ -39,7 +39,7 @@ final class PartyAccountFunctionAssignmentTest extends TestCase
         $assignment = PartyAccountFunctionAssignment::assign(
             42,
             9,
-            PartyFunctionCode::fromString('gerant'),
+            PartyFunctionCode::fromString('manager'),
             null,
         );
         self::assertTrue($assignment->isActive());
@@ -60,7 +60,7 @@ final class PartyAccountFunctionAssignmentTest extends TestCase
         $assignment = PartyAccountFunctionAssignment::assign(
             42,
             9,
-            PartyFunctionCode::fromString('financier'),
+            PartyFunctionCode::fromString('finance'),
             1,
         );
         $assignment->revoke();
@@ -72,7 +72,7 @@ final class PartyAccountFunctionAssignmentTest extends TestCase
             self::assertSame('party_account_function.already_revoked', $exception->errorCode());
             self::assertSame(42, $exception->context()['person_account_id']);
             self::assertSame(9, $exception->context()['organization_account_id']);
-            self::assertSame('financier', $exception->context()['function_code']);
+            self::assertSame('finance', $exception->context()['function_code']);
         }
     }
 }

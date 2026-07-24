@@ -314,14 +314,14 @@ CREATE TABLE document_trigger_rule_channel (
 -- ============================================================
 -- document_recipient_role : rôles destinataires connus (client,
 -- affilié, agence, fournisseur/hôtel, user connecté). Réutilise
--- party_role existant pour 'fournisseur' -- générique tous services,
+-- party_role existant pour 'supplier' -- générique tous services,
 -- confirmé en session (booking.supplier_account_id déjà transverse).
 -- ============================================================
 CREATE TABLE document_recipient_role (
     code  VARCHAR(30) PRIMARY KEY
 );
 INSERT INTO document_recipient_role (code) VALUES
-    ('client'), ('affilie'), ('agence'), ('fournisseur'), ('user_connecte');
+    ('customer'), ('affilie'), ('agence'), ('supplier'), ('user_connecte');
 
 -- ============================================================
 -- document_recipient_rule : destinataires d'un template. Une ligne

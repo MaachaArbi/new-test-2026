@@ -705,7 +705,7 @@ CREATE INDEX idx_booking_payer_split_payer ON booking_payer_split(payer_account_
 -- ============================================================
 -- booking_settlement : une ligne par bénéficiaire de la chaîne
 -- (fournisseur / agence principale / distributeur B2B -- plusieurs
--- lignes possibles avec beneficiary_role='distributeur' si un
+-- lignes possibles avec beneficiary_role='distributor' si un
 -- distributeur a lui-même des sous-comptes, chacun avec son propre
 -- beneficiary_account_id).
 --
@@ -716,7 +716,7 @@ CREATE INDEX idx_booking_payer_split_payer ON booking_payer_split(payer_account_
 -- marge de l'agence principale, qui fixe ces prix). booking_settlement
 -- ne fait que REDÉCOUPER cette marge déjà comptée entre bénéficiaires
 -- -- jamais une somme additionnelle au total. amount_owed d'une ligne
--- 'distributeur' (et de ses éventuels sous-comptes) est donc purement
+-- 'distributor' (et de ses éventuels sous-comptes) est donc purement
 -- informationnel/descriptif, prélevé sur la marge déjà incluse dans
 -- booking_charge, jamais ajouté par-dessus.
 --
@@ -742,7 +742,7 @@ CREATE TABLE booking_settlement (
     booking_id             BIGINT NOT NULL, -- FK applicative vers booking.id (voir note partitionnement)
     beneficiary_account_id BIGINT NOT NULL REFERENCES party_account(id),
     beneficiary_role       VARCHAR(30) NOT NULL
-                               CHECK (beneficiary_role IN ('fournisseur', 'agence_principale', 'distributeur')),
+                               CHECK (beneficiary_role IN ('supplier', 'main_agency', 'distributor')),
     amount_owed            BIGINT NOT NULL, -- centimes, ce qui revient à ce bénéficiaire en circuit normal
     amount_settled_direct  BIGINT NOT NULL DEFAULT 0, -- centimes, réglé hors circuit agence, constaté factuellement
     rate                    NUMERIC(6,3), -- taux d'origine si le montant a été calculé par pourcentage (ex: "Commission B2B 50%") -- optionnel, pour réafficher le taux tel quel plutôt que le recalculer depuis les montants (arrondis)
@@ -812,8 +812,8 @@ CREATE TABLE booking_charge_type (
 INSERT INTO booking_charge_type (code, sort_order) VALUES
     ('room_rate',                 0), -- prix de base (agrégé -- le détail jour/chambre/personne reste dans price_breakdown)
     ('discount',                  1), -- remise (ex-remise/remise_internet legacy)
-    ('margin_agence_principale',  2),
-    ('margin_distributeur',       3), -- 0 lignes si pas de distributeur B2B
+    ('margin_main_agency',  2),
+    ('margin_distributor',       3), -- 0 lignes si pas de distributeur B2B
     ('file_fee',                  4), -- ex-frais_dossier
     ('fiscal_stamp',              5), -- ex-timbre
     ('city_tax',                  6), -- ex-taxe de séjour (revirement du 15/07 : rejoint aussi booking_charge)
@@ -1118,6 +1118,6 @@ CREATE INDEX idx_booking_provider_snapshot_booking ON booking_provider_snapshot(
 --    party_account comme un autre, qui peut apparaître dans
 --    booking_payer_split au même titre qu'un employé ou tout autre
 --    payeur. beneficiary_role de booking_settlement reste à 3 valeurs
---    (fournisseur/agence_principale/distributeur) -- l'amicale n'est
+--    (fournisseur/main_agency/distributeur) -- l'amicale n'est
 --    jamais un bénéficiaire de marge, seulement un payeur éventuel.
 -- ============================================================

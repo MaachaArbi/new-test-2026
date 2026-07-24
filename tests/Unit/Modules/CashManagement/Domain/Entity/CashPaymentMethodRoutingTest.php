@@ -16,7 +16,7 @@ final class CashPaymentMethodRoutingTest extends TestCase
         try {
             CashPaymentMethodRouting::create(
                 paymentMethodId: 1,
-                routingTypeCode: 'aucun',
+                routingTypeCode: 'none',
                 instrumentTrackingMode: InstrumentTrackingMode::Individual,
                 strictSourceIsolation: false,
             );
@@ -31,7 +31,7 @@ final class CashPaymentMethodRoutingTest extends TestCase
         try {
             CashPaymentMethodRouting::create(
                 paymentMethodId: 1,
-                routingTypeCode: 'caisse',
+                routingTypeCode: 'cash_session',
                 instrumentTrackingMode: InstrumentTrackingMode::NotApplicable,
                 strictSourceIsolation: false,
             );
@@ -45,14 +45,14 @@ final class CashPaymentMethodRoutingTest extends TestCase
     {
         $routing = CashPaymentMethodRouting::create(
             paymentMethodId: 1,
-            routingTypeCode: 'caisse',
+            routingTypeCode: 'cash_session',
             instrumentTrackingMode: InstrumentTrackingMode::Aggregate,
             strictSourceIsolation: false,
         );
 
         try {
             $routing->update(
-                routingTypeCode: 'banque_directe',
+                routingTypeCode: 'direct_bank',
                 instrumentTrackingMode: InstrumentTrackingMode::NotApplicable,
                 strictSourceIsolation: false,
                 requiresCustodyCheck: true,
@@ -68,13 +68,13 @@ final class CashPaymentMethodRoutingTest extends TestCase
     {
         $routing = CashPaymentMethodRouting::create(
             paymentMethodId: 7,
-            routingTypeCode: 'aucun',
+            routingTypeCode: 'none',
             instrumentTrackingMode: InstrumentTrackingMode::NotApplicable,
             strictSourceIsolation: false,
         );
 
         self::assertSame(7, $routing->paymentMethodId());
-        self::assertSame('aucun', $routing->routingTypeCode());
+        self::assertSame('none', $routing->routingTypeCode());
         self::assertSame(InstrumentTrackingMode::NotApplicable, $routing->instrumentTrackingMode());
     }
 }

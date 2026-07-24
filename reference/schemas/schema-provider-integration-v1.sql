@@ -231,7 +231,7 @@ CREATE TRIGGER trg_provider_connection_audit AFTER INSERT OR UPDATE OR DELETE ON
 -- référence plutôt que CHECK fermé.
 -- ------------------------------------------------------------
 CREATE TABLE provider_call_status (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     label       VARCHAR(100) NOT NULL,
     sort_order  SMALLINT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -364,7 +364,7 @@ CREATE TABLE provider_call_log_default   PARTITION OF provider_call_log DEFAULT;
 --    Aucune contrainte d'immutabilité sur purge_at.
 -- 7. HORS PÉRIMÈTRE DE CETTE SESSION (reportés, voir sujets-reportes.md) :
 --    API OUT (devenir fournisseur pour un client tiers -- nature exacte
---    du "client" côté Party non tranchée), Channel Manager, gestion des
+--    du "customer" côté Party non tranchée), Channel Manager, gestion des
 --    licences/entitlements (transverse à tout le projet, pas propre à ce
 --    module -- même un bouton dans une page pourrait un jour être
 --    concerné). Contracting hôtelier avancé reste également hors

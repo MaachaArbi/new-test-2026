@@ -53,8 +53,8 @@ CREATE TABLE party_role (
 COMMENT ON TABLE party_role IS 'Référentiel des rôles structurels qu''un tiers peut porter (cumulables, historisés via party_account_role). Libellés dans party_role_translation.';
 
 INSERT INTO party_role (code, sort_order) VALUES
-    ('client',        0),
-    ('fournisseur',   1),
+    ('customer',        0),
+    ('supplier',   1),
     ('internal_user', 2),
     ('system',        3),
     ('channel',       4);
@@ -68,12 +68,12 @@ CREATE TABLE party_role_translation (
 );
 
 INSERT INTO party_role_translation (role_code, language_code, label) VALUES
-    ('client',        'en', 'Client'),
-    ('client',        'fr', 'Client'),
-    ('client',        'ar', 'عميل'),
-    ('fournisseur',   'en', 'Supplier'),
-    ('fournisseur',   'fr', 'Fournisseur'),
-    ('fournisseur',   'ar', 'مورد'),
+    ('customer',        'en', 'Client'),
+    ('customer',        'fr', 'Client'),
+    ('customer',        'ar', 'عميل'),
+    ('supplier',   'en', 'Supplier'),
+    ('supplier',   'fr', 'Fournisseur'),
+    ('supplier',   'ar', 'مورد'),
     ('internal_user', 'en', 'Internal user'),
     ('internal_user', 'fr', 'Utilisateur interne'),
     ('internal_user', 'ar', 'مستخدم داخلي'),
@@ -247,10 +247,10 @@ COMMENT ON TABLE party_function IS 'Fonctions métier exercées par une personne
 
 INSERT INTO party_function (code, sort_order) VALUES
     ('member',            0), -- accès de base, sans fonction métier précise (ex-party_account_member)
-    ('gerant',            1),
-    ('financier',         2),
+    ('manager',            1),
+    ('finance',         2),
     ('contracting',       3),
-    ('agent_reservation', 4);
+    ('booking_agent', 4);
 
 CREATE TABLE party_function_translation (
     function_code  VARCHAR(30) NOT NULL REFERENCES party_function(code),
@@ -264,18 +264,18 @@ INSERT INTO party_function_translation (function_code, language_code, label) VAL
     ('member',            'en', 'Member'),
     ('member',            'fr', 'Membre'),
     ('member',            'ar', 'عضو'),
-    ('gerant',            'en', 'Manager'),
-    ('gerant',            'fr', 'Gérant'),
-    ('gerant',            'ar', 'مدير'),
-    ('financier',         'en', 'Finance'),
-    ('financier',         'fr', 'Financier'),
-    ('financier',         'ar', 'مالية'),
+    ('manager',            'en', 'Manager'),
+    ('manager',            'fr', 'Gérant'),
+    ('manager',            'ar', 'مدير'),
+    ('finance',         'en', 'Finance'),
+    ('finance',         'fr', 'Financier'),
+    ('finance',         'ar', 'مالية'),
     ('contracting',       'en', 'Contracting'),
     ('contracting',       'fr', 'Contracting'),
     ('contracting',       'ar', 'التعاقد'),
-    ('agent_reservation', 'en', 'Booking agent'),
-    ('agent_reservation', 'fr', 'Agent de réservation'),
-    ('agent_reservation', 'ar', 'وكيل حجز');
+    ('booking_agent', 'en', 'Booking agent'),
+    ('booking_agent', 'fr', 'Agent de réservation'),
+    ('booking_agent', 'ar', 'وكيل حجز');
 
 -- ============================================================
 -- party_account_function : attribution historisée d'une fonction à une
@@ -390,8 +390,8 @@ CREATE TRIGGER trg_party_account_office_updated_at BEFORE UPDATE ON party_accoun
 -- tiers et un bureau. Obligatoire avant toute transaction (Booking) :
 -- un client ne peut acheter que s'il est officiellement rattaché à un
 -- bureau après approbation. relation_type = rôle du TIERS (account_id)
--- vis-à-vis du bureau : 'client' (le tiers achète auprès du bureau) ou
--- 'fournisseur' (le tiers fournit le bureau). Cumulable : une agence
+-- vis-à-vis du bureau : 'customer' (le tiers achète auprès du bureau) ou
+-- 'supplier' (le tiers fournit le bureau). Cumulable : une agence
 -- affiliée B2B peut être client de plusieurs bureaux à la fois.
 -- ============================================================
 CREATE TABLE party_account_office_relation (
@@ -399,7 +399,7 @@ CREATE TABLE party_account_office_relation (
     account_id          BIGINT NOT NULL REFERENCES party_account(id), -- le tiers (client ou fournisseur)
     office_account_id     BIGINT NOT NULL REFERENCES party_account(id), -- le bureau concerné (porte party_account_office)
     relation_type            VARCHAR(30) NOT NULL REFERENCES party_role(code)
-                                  CHECK (relation_type IN ('client', 'fournisseur')),
+                                  CHECK (relation_type IN ('customer', 'supplier')),
     is_approved                  BOOLEAN NOT NULL DEFAULT false,
     approved_at                     TIMESTAMPTZ,
     approved_by                        BIGINT REFERENCES party_account(id),

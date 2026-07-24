@@ -130,33 +130,33 @@ final class SettlementCreditMatchingPersistenceTest extends KernelTestCase
         );
     }
 
-    public function test_credit_from_client_instrument_posts_negative_reglement_client(): void
+    public function test_credit_from_client_instrument_posts_negative_customer_payment(): void
     {
-        $instrumentId = $this->createInstrument('client', 25_000);
+        $instrumentId = $this->createInstrument('customer', 25_000);
         $entry = ($this->postCreditHandler)(new PostSettlementCreditFromInstrumentCommand($instrumentId));
 
         self::assertSame(-25_000, $entry->amountMinor());
         self::assertSame($instrumentId, $entry->instrumentId());
 
-        $type = $this->entryTypeRepository->findByCode('reglement_client');
+        $type = $this->entryTypeRepository->findByCode('customer_payment');
         self::assertNotNull($type);
         self::assertSame($type->id(), $entry->entryTypeId());
     }
 
-    public function test_credit_from_fournisseur_instrument_posts_reglement_fournisseur(): void
+    public function test_credit_from_fournisseur_instrument_posts_supplier_payment(): void
     {
-        $instrumentId = $this->createInstrument('fournisseur', 8_000);
+        $instrumentId = $this->createInstrument('supplier', 8_000);
         $entry = ($this->postCreditHandler)(new PostSettlementCreditFromInstrumentCommand($instrumentId));
 
         self::assertSame(-8_000, $entry->amountMinor());
-        $type = $this->entryTypeRepository->findByCode('reglement_fournisseur');
+        $type = $this->entryTypeRepository->findByCode('supplier_payment');
         self::assertNotNull($type);
         self::assertSame($type->id(), $entry->entryTypeId());
     }
 
     public function test_credit_rejects_non_active_instrument(): void
     {
-        $instrumentId = $this->createInstrument('client', 5_000);
+        $instrumentId = $this->createInstrument('customer', 5_000);
         ($this->transitionInstrumentHandler)(new TransitionSettlementInstrumentStatusCommand(
             $instrumentId,
             'cancelled',
@@ -335,14 +335,14 @@ final class SettlementCreditMatchingPersistenceTest extends KernelTestCase
     private function seedDebitAndCredit(int $debit, int $credit): array
     {
         $partyId = $this->createOrg('MatchBk');
-        $obligationType = $this->entryTypeRepository->findByCode('obligation_vente');
-        $creditType = $this->entryTypeRepository->findByCode('reglement_client');
+        $obligationType = $this->entryTypeRepository->findByCode('customer_obligation');
+        $creditType = $this->entryTypeRepository->findByCode('customer_payment');
         self::assertNotNull($obligationType);
         self::assertNotNull($creditType);
 
         $debitEntry = SettlementLedgerEntry::post(
             partyAccountId: $partyId,
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: 'TND',
             entryTypeId: (int) $obligationType->id(),
             amountMinor: $debit,
@@ -353,7 +353,7 @@ final class SettlementCreditMatchingPersistenceTest extends KernelTestCase
 
         $creditEntry = SettlementLedgerEntry::post(
             partyAccountId: $partyId,
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: 'TND',
             entryTypeId: (int) $creditType->id(),
             amountMinor: -$credit,
@@ -373,12 +373,12 @@ final class SettlementCreditMatchingPersistenceTest extends KernelTestCase
     private function postStandaloneCredit(string $currency, int $amount): int
     {
         $partyId = $this->createOrg('OtherBk');
-        $creditType = $this->entryTypeRepository->findByCode('reglement_client');
+        $creditType = $this->entryTypeRepository->findByCode('customer_payment');
         self::assertNotNull($creditType);
 
         $entry = SettlementLedgerEntry::post(
             partyAccountId: $partyId,
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: $currency,
             entryTypeId: (int) $creditType->id(),
             amountMinor: -$amount,

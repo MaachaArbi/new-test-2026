@@ -138,7 +138,7 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
         self::assertSame('TND', $row['currency_code']);
         self::assertSame(12_500, $this->toInt($row['amount_minor']));
         self::assertSame($fixture['receiverId'], $this->toInt($row['created_by']));
-        self::assertSame('encaissement_instrument', $row['type_code']);
+        self::assertSame('instrument_receipt', $row['type_code']);
     }
 
     public function test_receive_rejects_closed_session(): void
@@ -241,7 +241,7 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
             self::fail('Expected CashReceiveInstrumentRoutingNotCaisseException');
         } catch (CashReceiveInstrumentRoutingNotCaisseException $exception) {
             self::assertSame('cash_receive.routing_not_caisse', $exception->errorCode());
-            self::assertSame('banque_directe', $exception->context()['routing_type_code']);
+            self::assertSame('direct_bank', $exception->context()['routing_type_code']);
         }
     }
 
@@ -344,7 +344,7 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
         self::assertNotNull($method);
         $routing = $this->routingRepository->findByPaymentMethodId((int) $method->id());
         self::assertNotNull($routing);
-        self::assertSame('caisse', $routing->routingTypeCode());
+        self::assertSame('cash_session', $routing->routingTypeCode());
 
         $instrumentId = $this->createInstrument($accounts['holderId'], (int) $method->id(), $amountMinor);
 
@@ -360,7 +360,7 @@ final class CashReceiveInstrumentPersistenceTest extends KernelTestCase
     {
         $instrument = ($this->createInstrumentHandler)(new CreateSettlementInstrumentCommand(
             partyAccountId: $partyAccountId,
-            partyRole: 'client',
+            partyRole: 'customer',
             currencyCode: 'TND',
             paymentMethodId: $paymentMethodId,
             amountMinor: $amountMinor,

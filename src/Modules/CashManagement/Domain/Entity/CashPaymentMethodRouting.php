@@ -12,7 +12,7 @@ use App\Modules\CashManagement\Domain\ValueObject\InstrumentTrackingMode;
  *
  * PK = payment_method_id (FK, strategy NONE). Mutable (UPDATE métier autorisé).
  * Contrainte croisée Domain = chk_routing_tracking_consistency :
- * routing_type_code='aucun' ⟺ instrument_tracking_mode=not_applicable.
+ * routing_type_code='none' ⟺ instrument_tracking_mode=not_applicable.
  */
 final class CashPaymentMethodRouting
 {
@@ -96,10 +96,10 @@ final class CashPaymentMethodRouting
         string $routingTypeCode,
         InstrumentTrackingMode $instrumentTrackingMode,
     ): void {
-        $isAucun = $routingTypeCode === 'aucun';
+        $isNone = $routingTypeCode === 'none';
         $isNotApplicable = $instrumentTrackingMode === InstrumentTrackingMode::NotApplicable;
 
-        if ($isAucun !== $isNotApplicable) {
+        if ($isNone !== $isNotApplicable) {
             throw InvalidCashPaymentMethodRoutingException::inconsistentTracking(
                 $routingTypeCode,
                 $instrumentTrackingMode->value,

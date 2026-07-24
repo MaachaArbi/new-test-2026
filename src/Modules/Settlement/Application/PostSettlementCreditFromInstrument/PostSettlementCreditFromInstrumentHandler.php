@@ -18,7 +18,7 @@ use DateTimeImmutable;
 
 /**
  * Poste un crédit grand livre depuis un instrument Active.
- * amountMinor négatif (reglement_client / reglement_fournisseur, normal_sign=-1).
+ * amountMinor négatif (customer_payment / supplier_payment, normal_sign=-1).
  */
 final class PostSettlementCreditFromInstrumentHandler
 {
@@ -44,9 +44,9 @@ final class PostSettlementCreditFromInstrumentHandler
             );
         }
 
-        $entryTypeCode = $instrument->partyRole() === InstrumentPartyRole::Client
-            ? 'reglement_client'
-            : 'reglement_fournisseur';
+        $entryTypeCode = $instrument->partyRole() === InstrumentPartyRole::Customer
+            ? 'customer_payment'
+            : 'supplier_payment';
 
         $entryType = $this->entryTypeRepository->findByCode($entryTypeCode);
         if ($entryType === null || $entryType->id() === null) {

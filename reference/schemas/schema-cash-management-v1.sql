@@ -25,34 +25,34 @@
 -- ============================================================
 
 CREATE TABLE cash_routing_type (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     label       VARCHAR(80) NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE cash_routing_type IS
 'Destination physique d''un mode de règlement une fois la pièce créée dans Règlements.
- caisse = transite par une session utilisateur ; banque_directe = atterrit
+ caisse = transite par une session utilisateur ; direct_bank = atterrit
  directement en banque sans jamais passer par une caisse (ex: virement reçu,
- versement espèce au guichet bancaire) ; transmission_externe = doit être
+ versement espèce au guichet bancaire) ; external_transmission = doit être
  physiquement transmis à un tiers émetteur avant remboursement (ex: bon de
  commande amicale) ; aucun = scriptural pur, Cash Management ne le voit jamais.';
 
 INSERT INTO cash_routing_type (code, label) VALUES
-    ('caisse',               'Passe par une session de caisse'),
-    ('banque_directe',       'Atterrit directement en banque, sans caisse'),
-    ('transmission_externe', 'Transmis physiquement à un tiers émetteur'),
-    ('aucun',                'Scriptural pur, hors périmètre Cash Management');
+    ('cash_session',               'Passe par une session de caisse'),
+    ('direct_bank',       'Atterrit directement en banque, sans caisse'),
+    ('external_transmission', 'Transmis physiquement à un tiers émetteur'),
+    ('none',                'Scriptural pur, hors périmètre Cash Management');
 
 CREATE TABLE cash_payment_method_routing (
     payment_method_id        BIGINT PRIMARY KEY REFERENCES settlement_payment_method(id),
-    routing_type_code        VARCHAR(20) NOT NULL REFERENCES cash_routing_type(code),
+    routing_type_code        VARCHAR(40) NOT NULL REFERENCES cash_routing_type(code),
 
     -- Fongibilité : 'individual' = la pièce garde son lien vers l'instrument/
     -- le client jusqu'au dépôt en banque ou à la transmission (résout la
     -- perte de traçabilité espèces legacy). 'aggregate' = fondu en un seul
     -- montant par devise (comportement legacy historique). 'not_applicable'
-    -- pour routing_type_code='aucun'.
+    -- pour routing_type_code='none'.
     instrument_tracking_mode VARCHAR(20) NOT NULL
                                 CHECK (instrument_tracking_mode IN ('individual','aggregate','not_applicable')),
 
@@ -71,8 +71,8 @@ CREATE TABLE cash_payment_method_routing (
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT chk_routing_tracking_consistency CHECK (
-        (routing_type_code = 'aucun' AND instrument_tracking_mode = 'not_applicable')
-        OR (routing_type_code <> 'aucun' AND instrument_tracking_mode <> 'not_applicable')
+        (routing_type_code = 'none' AND instrument_tracking_mode = 'not_applicable')
+        OR (routing_type_code <> 'none' AND instrument_tracking_mode <> 'not_applicable')
     )
 );
 
@@ -84,7 +84,7 @@ COMMENT ON TABLE cash_payment_method_routing IS
  instrument_tracking_mode. is_cash_like (Règlements) répond à "transite
  physiquement" ; routing_type_code répond à "vers où" — les deux peuvent
  diverger (ex: virement V est is_cash_like=false côté Règlements mais
- routing_type_code=banque_directe ici, car il doit être rapproché sur relevé
+ routing_type_code=direct_bank ici, car il doit être rapproché sur relevé
  même sans jamais toucher une caisse).';
 
 CREATE TRIGGER trg_cash_payment_method_routing_updated_at BEFORE UPDATE ON cash_payment_method_routing
@@ -93,24 +93,24 @@ CREATE TRIGGER trg_cash_payment_method_routing_updated_at BEFORE UPDATE ON cash_
 -- Seed initial, aligné sur les modes de règlement Règlements V1.0.
 -- Choix marqués (*) à confirmer avec l'utilisateur — posés par défaut raisonnable.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'aucun', 'not_applicable', false FROM settlement_payment_method WHERE code IN ('AD','CB','PE');
+SELECT id, 'none', 'not_applicable', false FROM settlement_payment_method WHERE code IN ('AD','CB','PE');
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'caisse', 'individual', false FROM settlement_payment_method WHERE code IN ('C','LC');
+SELECT id, 'cash_session', 'individual', false FROM settlement_payment_method WHERE code IN ('C','LC');
 -- Espèce : individual + isolation stricte activée (décision actée pour ce déploiement).
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'caisse', 'individual', true FROM settlement_payment_method WHERE code = 'E';
+SELECT id, 'cash_session', 'individual', true FROM settlement_payment_method WHERE code = 'E';
 -- Bon de commande / prise en charge : transmission externe vers l'amicale émettrice.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'transmission_externe', 'individual', false FROM settlement_payment_method WHERE code = 'PC';
--- (*) Virement : jamais de caisse, mais doit être rapproché sur relevé -> banque_directe.
+SELECT id, 'external_transmission', 'individual', false FROM settlement_payment_method WHERE code = 'PC';
+-- (*) Virement : jamais de caisse, mais doit être rapproché sur relevé -> direct_bank.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'banque_directe', 'individual', false FROM settlement_payment_method WHERE code = 'V';
+SELECT id, 'direct_bank', 'individual', false FROM settlement_payment_method WHERE code = 'V';
 -- (*) Versement espèce : le client dépose lui-même au guichet bancaire, jamais notre caisse.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'banque_directe', 'individual', false FROM settlement_payment_method WHERE code = 'VE';
+SELECT id, 'direct_bank', 'individual', false FROM settlement_payment_method WHERE code = 'VE';
 -- (*) Retenue à la source, Ristourne : déduction scripturale, pas de flux physique.
 INSERT INTO cash_payment_method_routing (payment_method_id, routing_type_code, instrument_tracking_mode, strict_source_isolation)
-SELECT id, 'aucun', 'not_applicable', false FROM settlement_payment_method WHERE code IN ('RC','RI');
+SELECT id, 'none', 'not_applicable', false FROM settlement_payment_method WHERE code IN ('RC','RI');
 
 -- ============================================================
 -- 2. RÉFÉRENTIEL DES TYPES DE MOUVEMENT DE CAISSE
@@ -133,21 +133,21 @@ COMMENT ON TABLE cash_movement_type IS
  "normalement crédit" avec un montant négatif).';
 
 INSERT INTO cash_movement_type (code, label, normal_sign, is_system) VALUES
-    ('encaissement_instrument',    'Encaissement lié à une pièce de règlement', 'C', true),
-    ('decaissement_fournisseur',   'Paiement fournisseur en espèces',           'D', true),
-    ('mouvement_libre_credit',     'Mouvement libre - crédit',                  'C', false),
-    ('mouvement_libre_debit',      'Mouvement libre - débit',                   'D', false),
-    ('transfert_sortant',          'Transfert vers une autre session',          'D', true),
-    ('transfert_entrant',          'Transfert reçu d''une autre session',       'C', true),
-    ('conversion_sortante',        'Sortie devise convertie',                   'D', true),
-    ('conversion_entrante',        'Entrée devise convertie',                   'C', true),
-    ('sortie_depot_banque',        'Sortie caisse pour dépôt en banque',        'D', true),
-    ('sortie_transmission_externe','Sortie caisse pour transmission externe',   'D', true),
-    ('sortie_validation_session',  'Sortie - validation caissier central',      'D', true),
-    ('entree_validation_session',  'Entrée caissier central - validation',      'C', true),
-    ('ecart_cloture',              'Écart de clôture (signe variable)',         'C', true),
-    ('sortie_instrument_retourne', 'Sortie - pièce retournée impayée',          'D', true),
-    ('correction_generique',       'Correction / contre-passation générique',   'C', true);
+    ('instrument_receipt',    'Encaissement lié à une pièce de règlement', 'C', true),
+    ('supplier_disbursement',   'Paiement fournisseur en espèces',           'D', true),
+    ('free_credit',     'Mouvement libre - crédit',                  'C', false),
+    ('free_debit',      'Mouvement libre - débit',                   'D', false),
+    ('transfer_out',          'Transfert vers une autre session',          'D', true),
+    ('transfer_in',          'Transfert reçu d''une autre session',       'C', true),
+    ('conversion_out',        'Sortie devise convertie',                   'D', true),
+    ('conversion_in',        'Entrée devise convertie',                   'C', true),
+    ('bank_deposit_out',        'Sortie caisse pour dépôt en banque',        'D', true),
+    ('external_transmission_out','Sortie caisse pour transmission externe',   'D', true),
+    ('session_validation_out',  'Sortie - validation caissier central',      'D', true),
+    ('session_validation_in',  'Entrée caissier central - validation',      'C', true),
+    ('closing_variance',              'Écart de clôture (signe variable)',         'C', true),
+    ('returned_instrument_out', 'Sortie - pièce retournée impayée',          'D', true),
+    ('generic_correction',       'Correction / contre-passation générique',   'C', true);
 
 -- ============================================================
 -- 3. SESSIONS DE CAISSE — la caisse EST la session (décision actée)
@@ -404,7 +404,7 @@ BEGIN
         RAISE EXCEPTION 'Instrument % introuvable', p_instrument_id;
     END IF;
 
-    SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'encaissement_instrument';
+    SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'instrument_receipt';
     INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, created_by)
     VALUES (p_session_id, v_type_id, v_currency, v_amount, p_instrument_id, p_by)
     RETURNING id INTO v_movement_id;
@@ -414,7 +414,7 @@ END; $$;
 COMMENT ON FUNCTION cash_receive_instrument IS
 'Encaissement d''une pièce Règlements dans la session. À appeler uniquement
  si cash_payment_method_routing du mode de règlement de l''instrument a
- routing_type_code=''caisse''.';
+ routing_type_code=''cash_session''.';
 
 -- Décaissement générique sans instrument dédié (paiement fournisseur, frais,
 -- mouvement libre débit...). p_amount_minor en magnitude positive.
@@ -464,20 +464,20 @@ COMMENT ON FUNCTION cash_post_outflow IS
 CREATE OR REPLACE FUNCTION cash_pay_supplier_cash(p_session_id BIGINT, p_currency_code VARCHAR(3), p_amount_minor BIGINT, p_memo TEXT, p_by BIGINT)
 RETURNS BIGINT LANGUAGE plpgsql AS $$
 BEGIN
-    RETURN cash_post_outflow(p_session_id, 'decaissement_fournisseur', p_currency_code, p_amount_minor, p_memo, p_by);
+    RETURN cash_post_outflow(p_session_id, 'supplier_disbursement', p_currency_code, p_amount_minor, p_memo, p_by);
 END; $$;
 
 CREATE OR REPLACE FUNCTION cash_free_debit(p_session_id BIGINT, p_currency_code VARCHAR(3), p_amount_minor BIGINT, p_memo TEXT, p_by BIGINT)
 RETURNS BIGINT LANGUAGE plpgsql AS $$
 BEGIN
-    RETURN cash_post_outflow(p_session_id, 'mouvement_libre_debit', p_currency_code, p_amount_minor, p_memo, p_by);
+    RETURN cash_post_outflow(p_session_id, 'free_debit', p_currency_code, p_amount_minor, p_memo, p_by);
 END; $$;
 
 CREATE OR REPLACE FUNCTION cash_free_credit(p_session_id BIGINT, p_currency_code VARCHAR(3), p_amount_minor BIGINT, p_memo TEXT, p_by BIGINT)
 RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE v_type_id BIGINT; v_movement_id BIGINT;
 BEGIN
-    SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'mouvement_libre_credit';
+    SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'free_credit';
     INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, memo, created_by)
     VALUES (p_session_id, v_type_id, p_currency_code, p_amount_minor, p_memo, p_by)
     RETURNING id INTO v_movement_id;
@@ -516,9 +516,9 @@ RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE
     v_out_id BIGINT; v_in_id BIGINT; v_type_in BIGINT; v_transfer_id BIGINT;
 BEGIN
-    v_out_id := cash_post_outflow(p_from_session_id, 'transfert_sortant', p_currency_code, p_amount_minor, p_reason, p_by);
+    v_out_id := cash_post_outflow(p_from_session_id, 'transfer_out', p_currency_code, p_amount_minor, p_reason, p_by);
 
-    SELECT id INTO v_type_in FROM cash_movement_type WHERE code = 'transfert_entrant';
+    SELECT id INTO v_type_in FROM cash_movement_type WHERE code = 'transfer_in';
     INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, memo, created_by)
     VALUES (p_to_session_id, v_type_in, p_currency_code, p_amount_minor, p_reason, p_by)
     RETURNING id INTO v_in_id;
@@ -562,9 +562,9 @@ RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE
     v_out_id BIGINT; v_in_id BIGINT; v_type_in BIGINT; v_conv_id BIGINT;
 BEGIN
-    v_out_id := cash_post_outflow(p_session_id, 'conversion_sortante', p_from_currency, p_from_amount, p_reason, p_by);
+    v_out_id := cash_post_outflow(p_session_id, 'conversion_out', p_from_currency, p_from_amount, p_reason, p_by);
 
-    SELECT id INTO v_type_in FROM cash_movement_type WHERE code = 'conversion_entrante';
+    SELECT id INTO v_type_in FROM cash_movement_type WHERE code = 'conversion_in';
     INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, memo, created_by)
     VALUES (p_session_id, v_type_in, p_to_currency, p_to_amount, p_reason, p_by)
     RETURNING id INTO v_in_id;
@@ -594,7 +594,7 @@ CREATE TABLE cash_session_count (
 
 COMMENT ON TABLE cash_session_count IS
 'Un comptage par devise à la clôture. L''écart (counted - theoretical) est
- TOUJOURS matérialisé comme un cash_movement (type ecart_cloture) AVANT la
+ TOUJOURS matérialisé comme un cash_movement (type closing_variance) AVANT la
  fermeture de la session — jamais une correction silencieuse hors journal.';
 
 CREATE OR REPLACE FUNCTION cash_count_session_currency(p_session_id BIGINT, p_currency_code VARCHAR(3), p_counted_amount_minor BIGINT, p_counted_by BIGINT)
@@ -608,7 +608,7 @@ BEGIN
     v_variance := p_counted_amount_minor - v_theoretical;
 
     IF v_variance <> 0 THEN
-        SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'ecart_cloture';
+        SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'closing_variance';
         INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, memo, created_by)
         VALUES (p_session_id, v_type_id, p_currency_code, v_variance, 'Écart de clôture', p_counted_by)
         RETURNING id INTO v_movement_id;
@@ -649,8 +649,8 @@ BEGIN
         RAISE EXCEPTION 'Seule une session fermée peut être validée (session %, statut %)', p_session_id, v_status;
     END IF;
 
-    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'sortie_validation_session';
-    SELECT id INTO v_in_type  FROM cash_movement_type WHERE code = 'entree_validation_session';
+    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'session_validation_out';
+    SELECT id INTO v_in_type  FROM cash_movement_type WHERE code = 'session_validation_in';
 
     -- (1) Non individuellement traçable : NULL ou tracking='aggregate',
     --     et jamais une jambe déjà consommatrice d'une allocation (sinon
@@ -817,13 +817,13 @@ CREATE TABLE cash_bank_transaction_type (
 );
 
 INSERT INTO cash_bank_transaction_type (code, label, normal_sign, is_system) VALUES
-    ('depot',            'Dépôt (bordereau de remise)',                'C', true),
-    ('reglement_direct',  'Règlement atterrissant directement en banque','C', true),
-    ('virement_emis',      'Virement émis',                              'D', false),
-    ('frais_bancaire',       'Frais bancaires',                          'D', false),
-    ('agios',                  'Agios',                                  'D', false),
-    ('interet',                  'Intérêts créditeurs',                  'C', false),
-    ('instrument_retourne',      'Pièce retournée impayée',               'D', true);
+    ('bank_deposit',            'Dépôt (bordereau de remise)',                'C', true),
+    ('direct_settlement',  'Règlement atterrissant directement en banque','C', true),
+    ('outgoing_transfer',      'Virement émis',                              'D', false),
+    ('bank_fee',       'Frais bancaires',                          'D', false),
+    ('overdraft_interest',                  'Agios',                                  'D', false),
+    ('credit_interest',                  'Intérêts créditeurs',                  'C', false),
+    ('returned_instrument',      'Pièce retournée impayée',               'D', true);
 
 CREATE TABLE cash_bank_transaction (
     id                       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -852,7 +852,7 @@ COMMENT ON TABLE cash_bank_transaction IS
  avec le relevé importé — voir cash_bank_statement). Peut naître d''un dépôt
  (deposit_id), d''un règlement atterrissant directement en banque sans caisse
  (instrument_id, ex: virement reçu), ou d''un fait purement bancaire sans
- contrepartie amont (frais, agios — origine non obligatoire, à la différence
+ contrepartie amont (frais, overdraft_interest — origine non obligatoire, à la différence
  de settlement_ledger_entry).';
 
 CREATE INDEX idx_cash_bank_transaction_account ON cash_bank_transaction(bank_account_id, value_date, id);
@@ -902,7 +902,7 @@ BEGIN
         RAISE EXCEPTION 'Devise instrument (%) <> devise compte bancaire (%)', v_currency, v_account_currency;
     END IF;
 
-    SELECT id INTO v_type_id FROM cash_bank_transaction_type WHERE code = 'reglement_direct';
+    SELECT id INTO v_type_id FROM cash_bank_transaction_type WHERE code = 'direct_settlement';
     INSERT INTO cash_bank_transaction (bank_account_id, transaction_type_id, amount_minor, instrument_id, value_date, created_by)
     VALUES (p_bank_account_id, v_type_id, v_amount, p_instrument_id, COALESCE(p_value_date, CURRENT_DATE), p_by)
     RETURNING id INTO v_id;
@@ -917,7 +917,7 @@ BEGIN
 END; $$;
 
 COMMENT ON FUNCTION cash_receive_bank_direct IS
-'Pour les modes de règlement routing_type_code=''banque_directe'' (virement,
+'Pour les modes de règlement routing_type_code=''direct_bank'' (virement,
  versement espèce au guichet) : jamais de caisse, atterrit directement ici.';
 
 -- ============================================================
@@ -988,7 +988,7 @@ BEGIN
         RAISE EXCEPTION 'Devise du mouvement source (%) <> devise du compte bancaire du bordereau (%)', v_currency, v_account_currency;
     END IF;
 
-    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'sortie_depot_banque';
+    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'bank_deposit_out';
     INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, created_by)
     VALUES (v_session_id, v_out_type, v_currency, -p_amount_minor, v_instrument_id, p_by)
     RETURNING id INTO v_out_id;
@@ -1008,7 +1008,7 @@ RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE
     v_out_id BIGINT; v_item_id BIGINT;
 BEGIN
-    v_out_id := cash_post_outflow(p_session_id, 'sortie_depot_banque', p_currency_code, p_amount_minor, 'Remise en banque (agrégé)', p_by);
+    v_out_id := cash_post_outflow(p_session_id, 'bank_deposit_out', p_currency_code, p_amount_minor, 'Remise en banque (agrégé)', p_by);
     INSERT INTO cash_deposit_item (deposit_id, movement_id) VALUES (p_deposit_id, v_out_id)
     RETURNING id INTO v_item_id;
     RETURN v_item_id;
@@ -1027,7 +1027,7 @@ BEGIN
     FROM cash_deposit_item di JOIN cash_movement cm ON cm.id = di.movement_id
     WHERE di.deposit_id = p_deposit_id;
 
-    SELECT id INTO v_type_id FROM cash_bank_transaction_type WHERE code = 'depot';
+    SELECT id INTO v_type_id FROM cash_bank_transaction_type WHERE code = 'bank_deposit';
     INSERT INTO cash_bank_transaction (bank_account_id, transaction_type_id, amount_minor, deposit_id, value_date, created_by)
     VALUES (v_bank_account_id, v_type_id, v_total, p_deposit_id, COALESCE(p_value_date, CURRENT_DATE), p_by)
     RETURNING id INTO v_tx_id;
@@ -1096,7 +1096,7 @@ BEGIN
     INTO v_session_id, v_currency, v_instrument_id, v_amount
     FROM cash_movement WHERE id = p_source_movement_id;
 
-    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'sortie_transmission_externe';
+    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'external_transmission_out';
     INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, created_by)
     VALUES (v_session_id, v_out_type, v_currency, -v_amount, v_instrument_id, p_by)
     RETURNING id INTO v_out_id;
@@ -1163,7 +1163,7 @@ BEGIN
         RAISE EXCEPTION 'Mouvement % déjà partiellement consommé/déposé/transmis (voir cash_cash_allocation) : annulation directe impossible, traiter chaque consommation séparément d''abord', p_original_movement_id;
     END IF;
 
-    SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'correction_generique';
+    SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'generic_correction';
     INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, effective_date, memo, reversal_of_movement_id, created_by)
     VALUES (p_target_session_id, v_type_id, v_currency, -v_amount, v_instrument_id, CURRENT_DATE, COALESCE(p_reason, 'Contre-passation'), p_original_movement_id, p_by)
     RETURNING id INTO v_movement_id;
@@ -1206,7 +1206,7 @@ BEGIN
     SELECT currency_code, amount_minor INTO v_currency, v_amount FROM settlement_instrument WHERE id = p_instrument_id;
 
     IF v_loc.location_type = 'session' THEN
-        SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'sortie_instrument_retourne';
+        SELECT id INTO v_type_id FROM cash_movement_type WHERE code = 'returned_instrument_out';
         INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, memo, created_by)
         VALUES (COALESCE(NULLIF(v_loc.session_id, NULL), p_target_session_id), v_type_id, v_currency, -v_amount, p_instrument_id, COALESCE(p_reason, 'Pièce retournée impayée'), p_by)
         RETURNING id INTO v_movement_id;
@@ -1223,7 +1223,7 @@ BEGIN
                 SELECT bank_account_id INTO v_bank_account_id FROM cash_deposit WHERE id = v_loc.deposit_id;
             END IF;
 
-            SELECT id INTO v_type_id FROM cash_bank_transaction_type WHERE code = 'instrument_retourne';
+            SELECT id INTO v_type_id FROM cash_bank_transaction_type WHERE code = 'returned_instrument';
             INSERT INTO cash_bank_transaction (bank_account_id, transaction_type_id, amount_minor, instrument_id, memo, created_by)
             VALUES (v_bank_account_id, v_type_id, -v_amount, p_instrument_id, COALESCE(p_reason, 'Pièce retournée impayée'), p_by)
             RETURNING id INTO v_tx_id;
@@ -1283,7 +1283,7 @@ COMMENT ON TABLE cash_reconciliation_match IS
 'N-N à montants partiels : 1 ligne de relevé peut couvrir 1 bordereau entier
  (dépôt groupé) ou 1 seul chèque, et inversement. Jamais bloquant : ce qui ne
  matche pas reste non rapproché sans empêcher le reste. Un écart assumé
- (frais bancaires, agios) se qualifie via un cash_bank_transaction dédié,
+ (frais bancaires, overdraft_interest) se qualifie via un cash_bank_transaction dédié,
  pas via ce lien.';
 
 CREATE INDEX idx_cash_reconciliation_line ON cash_reconciliation_match(statement_line_id);

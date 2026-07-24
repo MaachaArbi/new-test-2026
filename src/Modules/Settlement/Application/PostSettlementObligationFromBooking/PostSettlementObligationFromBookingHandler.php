@@ -16,7 +16,7 @@ use App\Shared\Infrastructure\Persistence\UnitOfWork;
 use DateTimeImmutable;
 
 /**
- * Poste une écriture obligation_vente par split actif.
+ * Poste une écriture customer_obligation par split actif.
  *
  * INSERT Domain-contrôlé (pas encore de settlement_post_obligation SQL) —
  * pattern mixte documenté : transfert = fonction SQL ; obligation = Domain.
@@ -43,9 +43,9 @@ final class PostSettlementObligationFromBookingHandler
             throw BookingNotFoundException::forId($command->bookingId);
         }
 
-        $entryType = $this->entryTypeRepository->findByCode('obligation_vente');
+        $entryType = $this->entryTypeRepository->findByCode('customer_obligation');
         if ($entryType === null || $entryType->id() === null) {
-            throw SettlementEntryTypeNotFoundException::forCode('obligation_vente');
+            throw SettlementEntryTypeNotFoundException::forCode('customer_obligation');
         }
 
         $splits = $this->payerSplitRepository->findByBookingId($command->bookingId, activeOnly: true);
@@ -57,7 +57,7 @@ final class PostSettlementObligationFromBookingHandler
         foreach ($splits as $split) {
             $entry = SettlementLedgerEntry::post(
                 partyAccountId: $split->payerAccountId(),
-                partyRole: InstrumentPartyRole::Client,
+                partyRole: InstrumentPartyRole::Customer,
                 currencyCode: $currencyCode,
                 entryTypeId: $entryTypeId,
                 amountMinor: $split->amount()->amount(),

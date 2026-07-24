@@ -26,7 +26,7 @@
 -- ailleurs dans le projet). Le timbre N'EST PAS ici : montant fixe par
 -- document, pas un taux par ligne — voir invoicing_stamp_duty_rate.
 CREATE TABLE invoicing_tax_type (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     label       VARCHAR(80) NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -143,7 +143,7 @@ CREATE TABLE invoicing_invoice (
     public_id          UUID NOT NULL DEFAULT gen_random_uuid(),
 
     party_account_id   BIGINT NOT NULL REFERENCES party_account(id),
-    -- party_role toujours 'client' ici — table dédiée par rôle (comme le
+    -- party_role toujours 'customer' ici — table dédiée par rôle (comme le
     -- legacy ost_com_facture / ost_com_facture_fournisseur), pas une
     -- colonne de rôle partagée : les deux faces ont des mécaniques de
     -- numérotation, d'avoir et de saisie trop différentes pour une table
@@ -700,7 +700,7 @@ BEGIN
         validated_at = now(), validated_by = p_by
     WHERE id = p_invoice_id;
 
-    SELECT id INTO v_type_id FROM settlement_entry_type WHERE code = 'obligation_vente';
+    SELECT id INTO v_type_id FROM settlement_entry_type WHERE code = 'customer_obligation';
 
     FOR r IN
         SELECT id, amount_minor FROM invoicing_invoice_line
@@ -710,7 +710,7 @@ BEGIN
             (party_account_id, party_role, currency_code, entry_type_id,
              amount_minor, effective_date, invoice_id, memo, created_by)
         VALUES
-            (v_party_id, 'client', v_currency, v_type_id,
+            (v_party_id, 'customer', v_currency, v_type_id,
              r.amount_minor, CURRENT_DATE, p_invoice_id,
              'Facture libre #' || v_number, p_by);
     END LOOP;
@@ -757,7 +757,7 @@ BEGIN
         (party_account_id, party_role, currency_code, entry_type_id,
          amount_minor, effective_date, credit_note_id, memo, created_by)
     VALUES
-        (v_party_id, 'client', v_currency, v_type_id,
+        (v_party_id, 'customer', v_currency, v_type_id,
          -v_total, CURRENT_DATE, p_credit_note_id,
          'Avoir #' || v_number, p_by);
 END;
@@ -797,7 +797,7 @@ LEFT JOIN invoicing_supplier_credit_note_line scnl
     ON scnl.supplier_invoice_line_id = sil.id
 LEFT JOIN invoicing_supplier_credit_note scn
     ON scn.id = scnl.supplier_credit_note_id AND scn.status_code = 'validated'
-WHERE bs.valid_to IS NULL AND bs.beneficiary_role = 'fournisseur'
+WHERE bs.valid_to IS NULL AND bs.beneficiary_role = 'supplier'
 GROUP BY bs.id, bs.booking_id, bs.beneficiary_account_id, bs.amount_owed, bs.currency_code;
 
 COMMENT ON VIEW invoicing_supplier_reconciliation IS

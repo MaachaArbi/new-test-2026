@@ -14,17 +14,17 @@ final class PartyRoleCodeTest extends TestCase
     #[Test]
     public function it_accepts_a_valid_code(): void
     {
-        $code = PartyRoleCode::fromString('client');
+        $code = PartyRoleCode::fromString('customer');
 
-        self::assertSame('client', $code->toString());
+        self::assertSame('customer', $code->toString());
     }
 
     #[Test]
     public function it_trims_whitespace(): void
     {
-        $code = PartyRoleCode::fromString('  fournisseur  ');
+        $code = PartyRoleCode::fromString('  supplier  ');
 
-        self::assertSame('fournisseur', $code->toString());
+        self::assertSame('supplier', $code->toString());
     }
 
     #[Test]

@@ -68,7 +68,7 @@ final class PartyAccountRoleAssignmentPersistenceTest extends KernelTestCase
         $account = $this->createPersonAccount('Role RoundTrip');
         $assignment = ($this->assignHandler)(new AssignPartyAccountRoleCommand(
             accountId: (int) $account->id(),
-            roleCode: 'client',
+            roleCode: 'customer',
             createdBy: null,
         ));
 
@@ -82,7 +82,7 @@ final class PartyAccountRoleAssignmentPersistenceTest extends KernelTestCase
         self::assertNotNull($reloaded);
         self::assertSame($id, $reloaded->id());
         self::assertSame($account->id(), $reloaded->accountId());
-        self::assertSame('client', $reloaded->roleCode()->toString());
+        self::assertSame('customer', $reloaded->roleCode()->toString());
         self::assertTrue($reloaded->isActive());
         self::assertNull($reloaded->validTo());
         self::assertSame(
@@ -96,7 +96,7 @@ final class PartyAccountRoleAssignmentPersistenceTest extends KernelTestCase
         $account = $this->createPersonAccount('Role Revoke');
         $assignment = ($this->assignHandler)(new AssignPartyAccountRoleCommand(
             (int) $account->id(),
-            'fournisseur',
+            'supplier',
             null,
         ));
         $id = (int) $assignment->id();
@@ -171,7 +171,7 @@ final class PartyAccountRoleAssignmentPersistenceTest extends KernelTestCase
         $account = $this->createPersonAccount('Role Revoke Handler');
         $assignment = ($this->assignHandler)(new AssignPartyAccountRoleCommand(
             (int) $account->id(),
-            'client',
+            'customer',
             null,
         ));
         $id = (int) $assignment->id();
@@ -206,7 +206,7 @@ final class PartyAccountRoleAssignmentPersistenceTest extends KernelTestCase
         $account = $this->createPersonAccount('Role Already Revoked');
         $assignment = ($this->assignHandler)(new AssignPartyAccountRoleCommand(
             (int) $account->id(),
-            'fournisseur',
+            'supplier',
             null,
         ));
         $id = (int) $assignment->id();
@@ -219,7 +219,7 @@ final class PartyAccountRoleAssignmentPersistenceTest extends KernelTestCase
         } catch (InvalidPartyAccountRoleAssignmentException $exception) {
             self::assertSame('party_account_role.already_revoked', $exception->errorCode());
             self::assertSame((int) $account->id(), $exception->context()['account_id']);
-            self::assertSame('fournisseur', $exception->context()['role_code']);
+            self::assertSame('supplier', $exception->context()['role_code']);
         }
     }
 

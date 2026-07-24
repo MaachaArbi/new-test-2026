@@ -40,7 +40,7 @@ final class AssignBookingSettlementControllerTest extends WebTestCase
             ],
             content: json_encode([
                 'beneficiaryAccountId' => $ctx['beneficiaryAccountId'],
-                'beneficiaryRole' => 'fournisseur',
+                'beneficiaryRole' => 'supplier',
                 'amountOwedMinor' => 8_000,
                 'currencyCode' => 'TND',
                 'amountSettledDirectMinor' => 1_000,
@@ -58,7 +58,7 @@ final class AssignBookingSettlementControllerTest extends WebTestCase
         self::assertArrayNotHasKey('id', $payload);
         self::assertArrayNotHasKey('bookingId', $payload);
         self::assertSame($ctx['beneficiaryAccountId'], $payload['beneficiaryAccountId']);
-        self::assertSame('fournisseur', $payload['beneficiaryRole']);
+        self::assertSame('supplier', $payload['beneficiaryRole']);
         self::assertSame(8_000, $payload['amountOwedMinor']);
         self::assertSame(1_000, $payload['amountSettledDirectMinor']);
         self::assertSame('TND', $payload['currencyCode']);
@@ -81,7 +81,7 @@ final class AssignBookingSettlementControllerTest extends WebTestCase
             ],
             content: json_encode([
                 'beneficiaryAccountId' => 1,
-                'beneficiaryRole' => 'fournisseur',
+                'beneficiaryRole' => 'supplier',
                 'amountOwedMinor' => 100,
                 'currencyCode' => 'TND',
             ], JSON_THROW_ON_ERROR),
@@ -101,7 +101,7 @@ final class AssignBookingSettlementControllerTest extends WebTestCase
 
         $body = [
             'beneficiaryAccountId' => $ctx['beneficiaryAccountId'],
-            'beneficiaryRole' => 'agence_principale',
+            'beneficiaryRole' => 'main_agency',
             'amountOwedMinor' => 3_000,
             'currencyCode' => 'TND',
         ];
@@ -135,7 +135,7 @@ final class AssignBookingSettlementControllerTest extends WebTestCase
         $payload = json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame('booking_settlement.already_active', $payload['error']['code']);
         self::assertSame($ctx['bookingId'], $payload['error']['context']['booking_id']);
-        self::assertSame('agence_principale', $payload['error']['context']['beneficiary_role']);
+        self::assertSame('main_agency', $payload['error']['context']['beneficiary_role']);
         self::assertSame($ctx['beneficiaryAccountId'], $payload['error']['context']['beneficiary_account_id']);
     }
 
@@ -156,7 +156,7 @@ final class AssignBookingSettlementControllerTest extends WebTestCase
             ],
             content: json_encode([
                 'beneficiaryAccountId' => $ctx['beneficiaryAccountId'],
-                'beneficiaryRole' => 'distributeur',
+                'beneficiaryRole' => 'distributor',
                 'amountOwedMinor' => 500,
                 // Length=3 passe la validation DTO ; Money refuse le format lettre.
                 'currencyCode' => '12X',
@@ -214,7 +214,7 @@ final class AssignBookingSettlementControllerTest extends WebTestCase
             ],
             content: json_encode([
                 'beneficiaryAccountId' => 'nope',
-                'beneficiaryRole' => 'fournisseur',
+                'beneficiaryRole' => 'supplier',
                 'amountOwedMinor' => 100,
                 'currencyCode' => 'TND',
             ], JSON_THROW_ON_ERROR),
@@ -239,7 +239,7 @@ final class AssignBookingSettlementControllerTest extends WebTestCase
             ],
             content: json_encode([
                 'beneficiaryAccountId' => 1,
-                'beneficiaryRole' => 'fournisseur',
+                'beneficiaryRole' => 'supplier',
                 'amountOwedMinor' => 100,
                 'currencyCode' => 'TND',
             ], JSON_THROW_ON_ERROR),

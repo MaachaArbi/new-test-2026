@@ -15,7 +15,7 @@ final class PartyAccountRoleAssignmentTest extends TestCase
     #[Test]
     public function assign_creates_an_active_assignment(): void
     {
-        $roleCode = PartyRoleCode::fromString('client');
+        $roleCode = PartyRoleCode::fromString('customer');
         $assignment = PartyAccountRoleAssignment::assign(
             accountId: 42,
             roleCode: $roleCode,
@@ -24,7 +24,7 @@ final class PartyAccountRoleAssignmentTest extends TestCase
 
         self::assertNull($assignment->id());
         self::assertSame(42, $assignment->accountId());
-        self::assertSame('client', $assignment->roleCode()->toString());
+        self::assertSame('customer', $assignment->roleCode()->toString());
         self::assertSame(7, $assignment->createdBy());
         self::assertTrue($assignment->isActive());
         self::assertNull($assignment->validTo());
@@ -36,7 +36,7 @@ final class PartyAccountRoleAssignmentTest extends TestCase
     {
         $assignment = PartyAccountRoleAssignment::assign(
             42,
-            PartyRoleCode::fromString('fournisseur'),
+            PartyRoleCode::fromString('supplier'),
             null,
         );
         self::assertTrue($assignment->isActive());

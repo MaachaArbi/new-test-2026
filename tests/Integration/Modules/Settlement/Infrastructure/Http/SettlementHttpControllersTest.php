@@ -38,7 +38,7 @@ final class SettlementHttpControllersTest extends WebTestCase
             server: $this->jsonHeaders($token),
             content: json_encode([
                 'partyAccountId' => $ctx['partyId'],
-                'partyRole' => 'client',
+                'partyRole' => 'customer',
                 'currencyCode' => 'TND',
                 'paymentMethodId' => $ctx['paymentMethodId'],
                 'amountMinor' => 25_000,
@@ -64,7 +64,7 @@ final class SettlementHttpControllersTest extends WebTestCase
             'POST',
             '/api/v1/settlements/instruments',
             server: $this->jsonHeaders($token),
-            content: json_encode(['partyRole' => 'client'], JSON_THROW_ON_ERROR),
+            content: json_encode(['partyRole' => 'customer'], JSON_THROW_ON_ERROR),
         );
 
         self::assertResponseStatusCodeSame(422);
@@ -271,7 +271,7 @@ final class SettlementHttpControllersTest extends WebTestCase
 
         /** @var SettlementEntryTypeRepositoryInterface $entryTypes */
         $entryTypes = static::getContainer()->get(SettlementEntryTypeRepositoryInterface::class);
-        $obligationType = $entryTypes->findByCode('obligation_vente');
+        $obligationType = $entryTypes->findByCode('customer_obligation');
         self::assertNotNull($obligationType);
 
         /** @var UnitOfWork $uow */
@@ -280,7 +280,7 @@ final class SettlementHttpControllersTest extends WebTestCase
         $ledger = static::getContainer()->get(SettlementLedgerEntryRepositoryInterface::class);
         $debit = SettlementLedgerEntry::post(
             partyAccountId: $ctx['partyId'],
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: 'TND',
             entryTypeId: (int) $obligationType->id(),
             amountMinor: 100_000,
@@ -296,7 +296,7 @@ final class SettlementHttpControllersTest extends WebTestCase
             server: $this->jsonHeaders($token),
             content: json_encode([
                 'partyAccountId' => $ctx['partyId'],
-                'partyRole' => 'client',
+                'partyRole' => 'customer',
                 'currencyCode' => 'TND',
                 'paymentMethodId' => $ctx['paymentMethodId'],
                 'amountMinor' => 60_000,
@@ -329,7 +329,7 @@ final class SettlementHttpControllersTest extends WebTestCase
 
         $client->request(
             'GET',
-            '/api/v1/party-accounts/'.$ctx['partyPublicId'].'/settlements/balance?partyRole=client&currencyCode=TND',
+            '/api/v1/party-accounts/'.$ctx['partyPublicId'].'/settlements/balance?partyRole=customer&currencyCode=TND',
             server: $this->jsonHeaders($token),
         );
         self::assertResponseStatusCodeSame(200);
@@ -354,7 +354,7 @@ final class SettlementHttpControllersTest extends WebTestCase
             server: $this->jsonHeaders($token),
             content: json_encode([
                 'partyAccountId' => $ctx['partyId'],
-                'partyRole' => 'client',
+                'partyRole' => 'customer',
                 'currencyCode' => 'TND',
                 'paymentMethodId' => $ctx['paymentMethodId'],
                 'amountMinor' => 50_000,
@@ -539,7 +539,7 @@ final class SettlementHttpControllersTest extends WebTestCase
             server: $this->jsonHeaders($token),
             content: json_encode([
                 'partyAccountId' => $ctx['partyId'],
-                'partyRole' => 'client',
+                'partyRole' => 'customer',
                 'currencyCode' => 'TND',
                 'paymentMethodId' => $ctx['paymentMethodId'],
                 'amountMinor' => $amountMinor,
@@ -575,14 +575,14 @@ final class SettlementHttpControllersTest extends WebTestCase
         $accounts->save($party);
         $unitOfWork->commit();
 
-        $obligationType = $types->findByCode('obligation_vente');
-        $creditType = $types->findByCode('reglement_client');
+        $obligationType = $types->findByCode('customer_obligation');
+        $creditType = $types->findByCode('customer_payment');
         self::assertNotNull($obligationType);
         self::assertNotNull($creditType);
 
         $debitEntry = SettlementLedgerEntry::post(
             partyAccountId: (int) $party->id(),
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: 'TND',
             entryTypeId: (int) $obligationType->id(),
             amountMinor: $debit,
@@ -593,7 +593,7 @@ final class SettlementHttpControllersTest extends WebTestCase
 
         $creditEntry = SettlementLedgerEntry::post(
             partyAccountId: (int) $party->id(),
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: 'TND',
             entryTypeId: (int) $creditType->id(),
             amountMinor: -$credit,

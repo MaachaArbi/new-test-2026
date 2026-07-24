@@ -104,7 +104,7 @@ final class PartyAccountFunctionAssignmentPersistenceTest extends KernelTestCase
         $assignment = ($this->assignHandler)(new AssignPartyAccountFunctionCommand(
             (int) $person->id(),
             (int) $org->id(),
-            'gerant',
+            'manager',
             null,
         ));
         $id = (int) $assignment->id();
@@ -184,7 +184,7 @@ final class PartyAccountFunctionAssignmentPersistenceTest extends KernelTestCase
         $first = ($this->assignHandler)(new AssignPartyAccountFunctionCommand(
             $personId,
             $orgId,
-            'agent_reservation',
+            'booking_agent',
             null,
         ));
         $firstId = (int) $first->id();
@@ -196,13 +196,13 @@ final class PartyAccountFunctionAssignmentPersistenceTest extends KernelTestCase
         $second = ($this->assignHandler)(new AssignPartyAccountFunctionCommand(
             $personId,
             $orgId,
-            'agent_reservation',
+            'booking_agent',
             null,
         ));
         $secondId = (int) $second->id();
 
         self::assertNotSame($firstId, $secondId);
-        self::assertSame(2, $this->countAssignments($personId, $orgId, 'agent_reservation'));
+        self::assertSame(2, $this->countAssignments($personId, $orgId, 'booking_agent'));
 
         $this->em->clear();
 
@@ -218,7 +218,7 @@ final class PartyAccountFunctionAssignmentPersistenceTest extends KernelTestCase
             $this->functionAssignmentRepository->hasActiveFunction(
                 $personId,
                 $orgId,
-                PartyFunctionCode::fromString('agent_reservation'),
+                PartyFunctionCode::fromString('booking_agent'),
             ),
         );
     }
@@ -269,7 +269,7 @@ final class PartyAccountFunctionAssignmentPersistenceTest extends KernelTestCase
         $assignment = ($this->assignHandler)(new AssignPartyAccountFunctionCommand(
             (int) $person->id(),
             (int) $org->id(),
-            'gerant',
+            'manager',
             null,
         ));
         $id = (int) $assignment->id();
@@ -283,7 +283,7 @@ final class PartyAccountFunctionAssignmentPersistenceTest extends KernelTestCase
             self::assertSame('party_account_function.already_revoked', $exception->errorCode());
             self::assertSame((int) $person->id(), $exception->context()['person_account_id']);
             self::assertSame((int) $org->id(), $exception->context()['organization_account_id']);
-            self::assertSame('gerant', $exception->context()['function_code']);
+            self::assertSame('manager', $exception->context()['function_code']);
         }
     }
 

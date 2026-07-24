@@ -11,7 +11,7 @@ namespace App\Modules\Booking\Domain\ValueObject;
  */
 enum BeneficiaryRole: string
 {
-    case Fournisseur = 'fournisseur';
-    case AgencePrincipale = 'agence_principale';
-    case Distributeur = 'distributeur';
+    case Supplier = 'supplier';
+    case MainAgency = 'main_agency';
+    case Distributor = 'distributor';
 }

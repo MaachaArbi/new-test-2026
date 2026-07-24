@@ -58,14 +58,14 @@ CREATE TABLE settlement_entry_type (
 COMMENT ON TABLE settlement_entry_type IS
 'Nature des écritures du grand livre. Extensible sans migration.
  Valeurs initiales :
-   obligation_vente      (+1) : obligation client projetée depuis booking_payer_split
-   obligation_achat      (+1) : obligation fournisseur (ex-impayé fournisseur)
-   reglement_client      (-1) : pièce reçue du client
-   reglement_fournisseur (-1) : pièce versée au fournisseur
+   customer_obligation      (+1) : obligation client projetée depuis booking_payer_split
+   supplier_obligation      (+1) : obligation fournisseur (ex-impayé fournisseur)
+   customer_payment      (-1) : pièce reçue du client
+   supplier_payment (-1) : pièce versée au fournisseur
    reversal              (±1) : contre-passation (signe opposé à l''écriture annulée)
    deposit               (-1) : dépôt/avance B2B sans réservation en face
-   remboursement_client  (+1) : remboursement sortant vers client
-   transfert_solde       (±1) : jambe d''un transfert inter-livres';
+   customer_refund  (+1) : remboursement sortant vers client
+   balance_transfer       (±1) : jambe d''un transfert inter-livres';
 
 CREATE UNIQUE INDEX uq_settlement_entry_type_public_id ON settlement_entry_type(public_id);
 
@@ -84,7 +84,7 @@ CREATE TABLE settlement_instrument (
     -- la répartition entre eux est portée par booking_payer_split, pas ici.
     party_account_id   BIGINT NOT NULL REFERENCES party_account(id),
     party_role         VARCHAR(20) NOT NULL
-                         CHECK (party_role IN ('client','fournisseur')),
+                         CHECK (party_role IN ('customer','supplier')),
 
     -- Devise native. Une pièce DT ne règle qu''un livre DT.
     currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
@@ -148,9 +148,9 @@ CREATE TABLE settlement_transfer (
     -- Les deux livres concernés. Aucune contrainte de parenté (n''importe
     -- quels deux comptes distincts dans la même devise).
     source_account_id    BIGINT NOT NULL REFERENCES party_account(id),
-    source_role          VARCHAR(20) NOT NULL CHECK (source_role IN ('client','fournisseur')),
+    source_role          VARCHAR(20) NOT NULL CHECK (source_role IN ('customer','supplier')),
     target_account_id    BIGINT NOT NULL REFERENCES party_account(id),
-    target_role          VARCHAR(20) NOT NULL CHECK (target_role IN ('client','fournisseur')),
+    target_role          VARCHAR(20) NOT NULL CHECK (target_role IN ('customer','supplier')),
 
     currency_code        VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
     -- Partiel autorisé : amount_minor peut être inférieur au solde source.
@@ -194,7 +194,7 @@ CREATE TABLE settlement_ledger_entry (
     -- que de devises. La devise est native : jamais de conversion dans le livre.
     party_account_id   BIGINT NOT NULL REFERENCES party_account(id),
     party_role         VARCHAR(20) NOT NULL
-                         CHECK (party_role IN ('client','fournisseur')),
+                         CHECK (party_role IN ('customer','supplier')),
     currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
 
     entry_type_id      BIGINT NOT NULL REFERENCES settlement_entry_type(id),
@@ -390,7 +390,7 @@ DECLARE
     v_type_id     BIGINT;
 BEGIN
     SELECT id INTO v_type_id
-    FROM settlement_entry_type WHERE code = 'transfert_solde';
+    FROM settlement_entry_type WHERE code = 'balance_transfer';
 
     INSERT INTO settlement_transfer
         (source_account_id, source_role, target_account_id, target_role,
@@ -446,14 +446,14 @@ INSERT INTO settlement_payment_method (code, label, is_cash_like) VALUES
     ('RI', 'Ristourne',                            false);
 
 INSERT INTO settlement_entry_type (code, label, normal_sign) VALUES
-    ('obligation_vente',      'Obligation client (réservation validée)',         1),
-    ('obligation_achat',      'Obligation fournisseur (rattachement réservation)',1),
-    ('reglement_client',      'Règlement reçu du client',                       -1),
-    ('reglement_fournisseur', 'Règlement versé au fournisseur',                 -1),
+    ('customer_obligation',      'Obligation client (réservation validée)',         1),
+    ('supplier_obligation',      'Obligation fournisseur (rattachement réservation)',1),
+    ('customer_payment',      'Règlement reçu du client',                       -1),
+    ('supplier_payment', 'Règlement versé au fournisseur',                 -1),
     ('reversal',              'Contre-passation',                                1),
     ('deposit',               'Dépôt / avance (sans réservation en face)',      -1),
-    ('remboursement_client',  'Remboursement sortant vers client',               1),
-    ('transfert_solde',       'Jambe de transfert inter-livres',                 1);
+    ('customer_refund',  'Remboursement sortant vers client',               1),
+    ('balance_transfer',       'Jambe de transfert inter-livres',                 1);
 
 -- ============================================================
 -- NOTES D''IMPLÉMENTATION

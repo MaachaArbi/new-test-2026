@@ -104,15 +104,15 @@ final class SettlementBalanceReadPersistenceTest extends KernelTestCase
     public function test_end_to_end_balance_matches_ledger_sum_after_obligation_and_credits(): void
     {
         $partyId = $this->createOrg('BalRead');
-        $role = InstrumentPartyRole::Client->value;
+        $role = InstrumentPartyRole::Customer->value;
         $currency = 'TND';
 
-        $obligationType = $this->entryTypeRepository->findByCode('obligation_vente');
+        $obligationType = $this->entryTypeRepository->findByCode('customer_obligation');
         self::assertNotNull($obligationType);
 
         $obligation = SettlementLedgerEntry::post(
             partyAccountId: $partyId,
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: $currency,
             entryTypeId: (int) $obligationType->id(),
             amountMinor: 100_000,
@@ -183,7 +183,7 @@ final class SettlementBalanceReadPersistenceTest extends KernelTestCase
 
         $instrument = ($this->createInstrumentHandler)(new CreateSettlementInstrumentCommand(
             partyAccountId: $partyId,
-            partyRole: 'client',
+            partyRole: 'customer',
             currencyCode: 'TND',
             paymentMethodId: (int) $method->id(),
             amountMinor: $amountMinor,

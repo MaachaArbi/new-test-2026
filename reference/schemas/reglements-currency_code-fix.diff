@@ -10,7 +10,7 @@
  --              Toute correction = écriture nouvelle. Jamais d'UPDATE/DELETE.
  -- ============================================================================
 @@ -87,7 +87,7 @@
-                          CHECK (party_role IN ('client','fournisseur')),
+                          CHECK (party_role IN ('customer','supplier')),
  
      -- Devise native. Une pièce DT ne règle qu''un livre DT.
 -    currency_id        BIGINT NOT NULL REFERENCES ref_currency(id),
@@ -29,7 +29,7 @@
  
 @@ -152,7 +152,7 @@
      target_account_id    BIGINT NOT NULL REFERENCES party_account(id),
-     target_role          VARCHAR(20) NOT NULL CHECK (target_role IN ('client','fournisseur')),
+     target_role          VARCHAR(20) NOT NULL CHECK (target_role IN ('customer','supplier')),
  
 -    currency_id          BIGINT NOT NULL REFERENCES ref_currency(id),
 +    currency_code        VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
@@ -50,7 +50,7 @@
 @@ -195,7 +195,7 @@
      party_account_id   BIGINT NOT NULL REFERENCES party_account(id),
      party_role         VARCHAR(20) NOT NULL
-                          CHECK (party_role IN ('client','fournisseur')),
+                          CHECK (party_role IN ('customer','supplier')),
 -    currency_id        BIGINT NOT NULL REFERENCES ref_currency(id),
 +    currency_code      VARCHAR(3) NOT NULL REFERENCES ref_currency(code),
  

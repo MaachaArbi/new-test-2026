@@ -18,7 +18,7 @@ final class SettlementInstrumentTest extends TestCase
         try {
             SettlementInstrument::create(
                 partyAccountId: 1,
-                partyRole: InstrumentPartyRole::Client,
+                partyRole: InstrumentPartyRole::Customer,
                 currencyCode: 'TND',
                 paymentMethodId: 1,
                 amountMinor: 0,
@@ -32,7 +32,7 @@ final class SettlementInstrumentTest extends TestCase
         try {
             SettlementInstrument::create(
                 partyAccountId: 1,
-                partyRole: InstrumentPartyRole::Client,
+                partyRole: InstrumentPartyRole::Customer,
                 currencyCode: 'TND',
                 paymentMethodId: 1,
                 amountMinor: -100,
@@ -47,7 +47,7 @@ final class SettlementInstrumentTest extends TestCase
     {
         $instrument = SettlementInstrument::create(
             partyAccountId: 10,
-            partyRole: InstrumentPartyRole::Fournisseur,
+            partyRole: InstrumentPartyRole::Supplier,
             currencyCode: 'eur',
             paymentMethodId: 2,
             amountMinor: 1500,
@@ -64,7 +64,7 @@ final class SettlementInstrumentTest extends TestCase
     {
         $instrument = SettlementInstrument::create(
             partyAccountId: 1,
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: 'TND',
             paymentMethodId: 1,
             amountMinor: 100,
@@ -85,7 +85,7 @@ final class SettlementInstrumentTest extends TestCase
     {
         $instrument = SettlementInstrument::create(
             partyAccountId: 1,
-            partyRole: InstrumentPartyRole::Client,
+            partyRole: InstrumentPartyRole::Customer,
             currencyCode: 'TND',
             paymentMethodId: 1,
             amountMinor: 100,

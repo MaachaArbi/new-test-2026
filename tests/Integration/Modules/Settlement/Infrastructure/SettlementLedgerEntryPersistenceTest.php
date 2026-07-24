@@ -143,7 +143,7 @@ final class SettlementLedgerEntryPersistenceTest extends KernelTestCase
         foreach ($entries as $entry) {
             self::assertSame($ctx['bookingId'], $entry->bookingId());
             self::assertSame('TND', $entry->currencyCode());
-            self::assertSame(InstrumentPartyRole::Client, $entry->partyRole());
+            self::assertSame(InstrumentPartyRole::Customer, $entry->partyRole());
             self::assertGreaterThan(0, $entry->amountMinor());
             $amountsByPayer[$entry->partyAccountId()] = $entry->amountMinor();
         }
@@ -153,12 +153,12 @@ final class SettlementLedgerEntryPersistenceTest extends KernelTestCase
 
         $sumA = $this->ledgerRepository->sumActiveByBook(
             $ctx['payerAId'],
-            InstrumentPartyRole::Client,
+            InstrumentPartyRole::Customer,
             'TND',
         );
         $sumB = $this->ledgerRepository->sumActiveByBook(
             $ctx['payerBId'],
-            InstrumentPartyRole::Client,
+            InstrumentPartyRole::Customer,
             'TND',
         );
         self::assertSame(60_000, $sumA);
@@ -172,9 +172,9 @@ final class SettlementLedgerEntryPersistenceTest extends KernelTestCase
 
         $transferId = ($this->postTransferHandler)(new PostSettlementTransferCommand(
             sourceAccountId: $source,
-            sourceRole: 'client',
+            sourceRole: 'customer',
             targetAccountId: $target,
-            targetRole: 'client',
+            targetRole: 'customer',
             currencyCode: 'TND',
             amountMinor: 15_000,
             effectiveDate: '2026-07-22',
@@ -223,7 +223,7 @@ final class SettlementLedgerEntryPersistenceTest extends KernelTestCase
     public function test_ledger_append_only_trigger_rejects_update(): void
     {
         $partyId = $this->createOrg('TrigUpd');
-        $entryType = $this->entryTypeRepository->findByCode('obligation_vente');
+        $entryType = $this->entryTypeRepository->findByCode('customer_obligation');
         self::assertNotNull($entryType);
 
         $this->connection->executeStatement(
@@ -231,7 +231,7 @@ final class SettlementLedgerEntryPersistenceTest extends KernelTestCase
                 (party_account_id, party_role, currency_code, entry_type_id,
                  amount_minor, effective_date, booking_id, memo)
              VALUES
-                (:party, \'client\', \'TND\', :type_id, 1000, CURRENT_DATE, 1, \'trigger probe\')',
+                (:party, \'customer\', \'TND\', :type_id, 1000, CURRENT_DATE, 1, \'trigger probe\')',
             [
                 'party' => $partyId,
                 'type_id' => (int) $entryType->id(),

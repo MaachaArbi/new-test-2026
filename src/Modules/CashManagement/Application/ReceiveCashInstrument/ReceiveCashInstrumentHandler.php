@@ -68,7 +68,7 @@ final class ReceiveCashInstrumentHandler
 
         // 3. Routing = caisse (absence = rejet)
         $routing = $this->routingRepository->findByPaymentMethodId($instrument->paymentMethodId());
-        if ($routing === null || $routing->routingTypeCode() !== 'caisse') {
+        if ($routing === null || $routing->routingTypeCode() !== 'cash_session') {
             throw CashReceiveInstrumentRoutingNotCaisseException::forPaymentMethod(
                 $instrument->paymentMethodId(),
                 $routing?->routingTypeCode(),

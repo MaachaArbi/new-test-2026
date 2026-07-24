@@ -263,7 +263,7 @@ COMMENT ON TABLE ref_board_type_translation IS 'Nom du type de pension par langu
 -- pas d'ajout local, 2 lignes.
 -- ------------------------------------------------------------
 CREATE TABLE ref_accommodation_rental_mode (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     sort_order  SMALLINT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -634,7 +634,7 @@ CREATE TABLE ref_option_translation (
 -- chacune, max ~30 attendu -- confirmé non critique par l'utilisateur).
 -- ------------------------------------------------------------
 CREATE TABLE ref_charge_unit (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     sort_order  SMALLINT NOT NULL DEFAULT 0
 );
 
@@ -643,7 +643,7 @@ INSERT INTO ref_charge_unit (code, sort_order) VALUES
     ('per_room',   1);
 
 CREATE TABLE ref_charge_frequency (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     sort_order  SMALLINT NOT NULL DEFAULT 0
 );
 

@@ -61,7 +61,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 --                  qui redivise déjà la marge entre bénéficiaires.
 -- ------------------------------------------------------------
 CREATE TABLE pricing_rule_nature (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     sort_order  SMALLINT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -77,7 +77,7 @@ COMMENT ON TABLE pricing_rule_nature IS 'Deux natures de règle : margin (fixe l
 -- (pourcentage ou montant), réutilisé par marge ET commission.
 -- ------------------------------------------------------------
 CREATE TABLE pricing_value_type (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     sort_order  SMALLINT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -727,7 +727,7 @@ INSERT INTO pricing_rule_nature (code, sort_order) VALUES ('payment_modality', 2
 -- pour un petit ensemble fixe (précédent direct : pricing_value_type).
 -- ------------------------------------------------------------
 CREATE TABLE pricing_payment_party_role (
-    code        VARCHAR(20) PRIMARY KEY,
+    code        VARCHAR(40) PRIMARY KEY,
     sort_order  SMALLINT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -735,9 +735,9 @@ CREATE TABLE pricing_payment_party_role (
 INSERT INTO pricing_payment_party_role (code, sort_order) VALUES
     ('agency',   0),
     ('supplier', 1),
-    ('client',   2);
+    ('customer',   2);
 
-COMMENT ON TABLE pricing_payment_party_role IS 'Bascule interne agence/fournisseur/client utilisée par pricing_payment_modality_detail -- distinct de party_role (rôles de tiers externes). ''client'' n''est valide que pour invoiced_to_code (facturation), jamais pour un collecteur acompte/solde (CHECK dédié).';
+COMMENT ON TABLE pricing_payment_party_role IS 'Bascule interne agence/fournisseur/client utilisée par pricing_payment_modality_detail -- distinct de party_role (rôles de tiers externes). ''customer'' n''est valide que pour invoiced_to_code (facturation), jamais pour un collecteur acompte/solde (CHECK dédié).';
 
 -- ------------------------------------------------------------
 -- pricing_payment_modality_detail : même pattern FK composite que
@@ -779,7 +779,7 @@ CREATE TABLE pricing_payment_modality_detail (
     -- La facture est établie au nom du client ou de l'agence, jamais
     -- du fournisseur (ce serait la facture D'ACHAT, hors périmètre --
     -- Pricing ne touche jamais l'achat).
-    CONSTRAINT chk_pricing_payment_modality_invoiced_to CHECK (invoiced_to_code IN ('client', 'agency'))
+    CONSTRAINT chk_pricing_payment_modality_invoiced_to CHECK (invoiced_to_code IN ('customer', 'agency'))
 );
 
 COMMENT ON TABLE pricing_payment_modality_detail IS 'Modalité de paiement hôtelière -- répartition acompte/solde entre agence et fournisseur (qui encaisse quoi) + au nom de qui la facture hôtel est établie. Le ciblage (hôtel/chambre/affilié/dates) est entièrement porté par le moteur pricing_rule existant, aucun ciblage propre ici. rule_nature_code+FK composite empêche structurellement le mélange avec margin/commission (même garde-fou déjà validé en sandbox, sujets-reportes.md §53).';

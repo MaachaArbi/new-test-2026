@@ -21,7 +21,7 @@ final class BookingSettlementTest extends TestCase
         $settlement = BookingSettlement::assign(
             bookingId: 10,
             beneficiaryAccountId: 20,
-            beneficiaryRole: BeneficiaryRole::Distributeur,
+            beneficiaryRole: BeneficiaryRole::Distributor,
             amountOwed: Money::fromMinorUnits(15_101_10, 'TND'),
             rate: SettlementRate::fromString('50'),
             resalePriceAmount: Money::fromMinorUnits(18_121_32, 'TND'),
@@ -42,7 +42,7 @@ final class BookingSettlementTest extends TestCase
         BookingSettlement::assign(
             bookingId: 1,
             beneficiaryAccountId: 2,
-            beneficiaryRole: BeneficiaryRole::Fournisseur,
+            beneficiaryRole: BeneficiaryRole::Supplier,
             amountOwed: Money::fromMinorUnits(100, 'TND'),
             resalePriceAmount: Money::fromMinorUnits(100, 'EUR'),
         );
@@ -54,7 +54,7 @@ final class BookingSettlementTest extends TestCase
         $settlement = BookingSettlement::assign(
             bookingId: 1,
             beneficiaryAccountId: 2,
-            beneficiaryRole: BeneficiaryRole::AgencePrincipale,
+            beneficiaryRole: BeneficiaryRole::MainAgency,
             amountOwed: Money::fromMinorUnits(100, 'TND'),
         );
 

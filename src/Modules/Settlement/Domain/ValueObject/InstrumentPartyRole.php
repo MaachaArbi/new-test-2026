@@ -11,6 +11,6 @@ namespace App\Modules\Settlement\Domain\ValueObject;
  */
 enum InstrumentPartyRole: string
 {
-    case Client = 'client';
-    case Fournisseur = 'fournisseur';
+    case Customer = 'customer';
+    case Supplier = 'supplier';
 }

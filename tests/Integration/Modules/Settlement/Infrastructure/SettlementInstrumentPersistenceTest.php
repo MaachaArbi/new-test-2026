@@ -99,7 +99,7 @@ final class SettlementInstrumentPersistenceTest extends KernelTestCase
         self::assertTrue($cheque->isActive());
         self::assertSame(36, strlen($cheque->publicId()->toString()));
 
-        $entryType = $this->entryTypeRepository->findByCode('reglement_client');
+        $entryType = $this->entryTypeRepository->findByCode('customer_payment');
         self::assertNotNull($entryType);
         self::assertSame(-1, $entryType->normalSign());
         self::assertSame(36, strlen($entryType->publicId()->toString()));
@@ -121,7 +121,7 @@ final class SettlementInstrumentPersistenceTest extends KernelTestCase
 
         $instrument = ($this->createHandler)(new CreateSettlementInstrumentCommand(
             partyAccountId: $ctx['partyId'],
-            partyRole: 'client',
+            partyRole: 'customer',
             currencyCode: 'TND',
             paymentMethodId: $paymentMethodId,
             amountMinor: 250_750,
@@ -143,7 +143,7 @@ final class SettlementInstrumentPersistenceTest extends KernelTestCase
         self::assertNotNull($reloaded);
         self::assertSame($instrument->publicId()->toString(), $reloaded->publicId()->toString());
         self::assertSame($ctx['partyId'], $reloaded->partyAccountId());
-        self::assertSame(InstrumentPartyRole::Client, $reloaded->partyRole());
+        self::assertSame(InstrumentPartyRole::Customer, $reloaded->partyRole());
         self::assertSame('TND', $reloaded->currencyCode());
         self::assertSame($paymentMethodId, $reloaded->paymentMethodId());
         self::assertSame(250_750, $reloaded->amountMinor());
@@ -172,7 +172,7 @@ final class SettlementInstrumentPersistenceTest extends KernelTestCase
         try {
             ($this->createHandler)(new CreateSettlementInstrumentCommand(
                 partyAccountId: $ctx['partyId'],
-                partyRole: 'client',
+                partyRole: 'customer',
                 currencyCode: 'TND',
                 paymentMethodId: (int) $cb->id(),
                 amountMinor: 0,
@@ -191,7 +191,7 @@ final class SettlementInstrumentPersistenceTest extends KernelTestCase
 
         $instrument = ($this->createHandler)(new CreateSettlementInstrumentCommand(
             partyAccountId: $ctx['partyId'],
-            partyRole: 'fournisseur',
+            partyRole: 'supplier',
             currencyCode: 'EUR',
             paymentMethodId: (int) $virement->id(),
             amountMinor: 99_00,
@@ -237,7 +237,7 @@ final class SettlementInstrumentPersistenceTest extends KernelTestCase
 
         $instrument = ($this->createHandler)(new CreateSettlementInstrumentCommand(
             partyAccountId: $ctx['partyId'],
-            partyRole: 'client',
+            partyRole: 'customer',
             currencyCode: 'TND',
             paymentMethodId: (int) $espece->id(),
             amountMinor: 50,
