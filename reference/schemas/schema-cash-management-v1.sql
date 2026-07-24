@@ -459,8 +459,8 @@ COMMENT ON FUNCTION cash_post_outflow IS
 'Primitive de sortie générique (pas de source désignée). Utilisée par le
  paiement fournisseur et les mouvements libres débit. Pour une sortie visant
  UNE pièce précise et connue (dépôt banque, transmission externe), utiliser
- cash_deposit_add_traceable_item / cash_transmission_add_item à la place,
- qui court-circuitent le FIFO au profit d''une allocation déterministe.';
+ cash_validate_deposit / cash_validate_transmission (après lignes de brouillon),
+ qui allouent de façon déterministe sur l''instrument désigné.';
 
 CREATE OR REPLACE FUNCTION cash_pay_supplier_cash(p_session_id BIGINT, p_currency_code VARCHAR(3), p_amount_minor BIGINT, p_memo TEXT, p_by BIGINT)
 RETURNS BIGINT LANGUAGE plpgsql AS $$
