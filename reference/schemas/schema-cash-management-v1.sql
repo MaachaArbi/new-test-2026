@@ -232,15 +232,16 @@ CREATE UNIQUE INDEX uq_cash_movement_public_id ON cash_movement(public_id);
 
 -- Invariant structurel (réouverture 23/07/2026, retour chat Backend) : un même
 -- settlement_instrument ne peut être encaissé deux fois dans LA MÊME session --
--- jamais légitime (doublon de saisie). Volontairement scopé à session_id : un
--- même instrument peut réapparaître dans une session DIFFÉRENTE (ex. migration
--- chèque agent -> caissier central -> banque via cash_validate_session), ce
--- n'est PAS un doublon, c'est un mouvement de vie légitime -- pas encore
--- construite côté backend, donc aucune contrainte cross-session ici par
--- construction (problème ouvert pour la vague cash_validate_session, voir
--- sujets-reportes.md). Même pattern que uq_cash_session_one_open_per_holder :
--- invariant porté par la base, pas par l'Application.
-CREATE UNIQUE INDEX uq_cash_movement_instrument_per_session ON cash_movement(session_id, instrument_id) WHERE instrument_id IS NOT NULL;
+-- jamais légitime (doublon de saisie). Volontairement scopé aux encaissements
+-- (amount_minor > 0, hors contre-passation) : une sortie (dépôt/transmission)
+-- et sa contre-passation réutilisent légitimement le même instrument_id (§67).
+-- Un même instrument peut aussi réapparaître dans une session DIFFÉRENTE
+-- (ex. migration chèque agent -> caissier central -> banque).
+CREATE UNIQUE INDEX uq_cash_movement_instrument_per_session
+    ON cash_movement(session_id, instrument_id)
+    WHERE instrument_id IS NOT NULL
+      AND amount_minor > 0
+      AND reversal_of_movement_id IS NULL;
 
 -- IMMUABILITÉ + verrou de session : bloque toute écriture sur une session non
 -- 'open'. Résout structurellement "annulation sur caisse déjà clôturée".
@@ -623,7 +624,31 @@ END; $$;
 
 CREATE OR REPLACE FUNCTION cash_close_session(p_session_id BIGINT, p_closed_by BIGINT)
 RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_draft_deposit_id BIGINT;
+    v_draft_transmission_id BIGINT;
 BEGIN
+    -- §67 : un brouillon de bordereau bloque la clôture (décision utilisateur).
+    SELECT id INTO v_draft_deposit_id
+    FROM cash_deposit
+    WHERE session_id = p_session_id AND status_code = 'draft'
+    LIMIT 1;
+    IF v_draft_deposit_id IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Impossible de clôturer la session % : bordereau de dépôt % encore en brouillon — valider ou supprimer ce bordereau',
+            p_session_id, v_draft_deposit_id;
+    END IF;
+
+    SELECT id INTO v_draft_transmission_id
+    FROM cash_external_transmission
+    WHERE session_id = p_session_id AND status_code = 'draft'
+    LIMIT 1;
+    IF v_draft_transmission_id IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Impossible de clôturer la session % : bordereau de transmission % encore en brouillon — valider ou supprimer ce bordereau',
+            p_session_id, v_draft_transmission_id;
+    END IF;
+
     UPDATE cash_session SET status_code = 'closed', closed_at = now(), closed_by = p_closed_by
     WHERE id = p_session_id AND status_code = 'open';
     IF NOT FOUND THEN
@@ -922,6 +947,8 @@ COMMENT ON FUNCTION cash_receive_bank_direct IS
 
 -- ============================================================
 -- 15. BORDEREAUX DE REMISE (dépôt en banque)
+--     Cycle de vie brouillon/validation (§67, 24/07) : un brouillon n'a
+--     AUCUN effet comptable ; les cash_movement naissent à la validation.
 -- ============================================================
 
 CREATE TABLE cash_deposit_type (
@@ -937,19 +964,32 @@ INSERT INTO cash_deposit_type (code, label) VALUES
 CREATE TABLE cash_deposit (
     id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     public_id         UUID NOT NULL DEFAULT gen_random_uuid(),
+    session_id        BIGINT NOT NULL REFERENCES cash_session(id),
     bank_account_id   BIGINT NOT NULL REFERENCES cash_bank_account(id),
     deposit_type_code VARCHAR(20) NOT NULL REFERENCES cash_deposit_type(code),
+    status_code       VARCHAR(20) NOT NULL DEFAULT 'draft'
+                         CHECK (status_code IN ('draft','validated','cancelled')),
     reference         VARCHAR(100),
-    deposited_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deposited_at      TIMESTAMPTZ,  -- NULL tant que brouillon ; posé à la validation
     deposited_by      BIGINT REFERENCES party_account(id),
-    confirmed_transaction_id BIGINT REFERENCES cash_bank_transaction(id)  -- posé par cash_confirm_deposit()
+    confirmed_transaction_id BIGINT REFERENCES cash_bank_transaction(id),  -- posé par cash_confirm_deposit()
+    CONSTRAINT chk_deposit_lifecycle CHECK (
+        (status_code = 'draft'     AND deposited_at IS NULL)
+        OR (status_code = 'validated' AND deposited_at IS NOT NULL)
+        OR (status_code = 'cancelled' AND deposited_at IS NOT NULL)
+    )
 );
 
 COMMENT ON TABLE cash_deposit IS
-'Bordereau de remise. Regroupe N pièces (chèque/LCN) ou N lignes d''espèces
- individuellement tracées vers un même compte bancaire. Le statut de
- rapprochement ne se stocke pas ici : il se dérive de cash_reconciliation_match
- sur confirmed_transaction_id.';
+'Bordereau de remise. Cycle draft→validated→cancelled (§67). Un brouillon
+ n''a aucun cash_movement ; la caisse affiche toujours le contenu physique
+ du tiroir. Un seul brouillon par session (index unique partiel). Après
+ confirmation bancaire (confirmed_transaction_id), plus d''annulation.';
+
+CREATE UNIQUE INDEX uq_cash_deposit_one_draft_per_session
+    ON cash_deposit(session_id) WHERE status_code = 'draft';
+CREATE UNIQUE INDEX uq_cash_deposit_public_id ON cash_deposit(public_id);
+CREATE INDEX idx_cash_deposit_session ON cash_deposit(session_id);
 
 ALTER TABLE cash_bank_transaction
     ADD CONSTRAINT fk_cash_bank_transaction_deposit FOREIGN KEY (deposit_id) REFERENCES cash_deposit(id);
@@ -958,70 +998,261 @@ ALTER TABLE cash_instrument_location
 
 CREATE TABLE cash_deposit_item (
     id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    deposit_id    BIGINT NOT NULL REFERENCES cash_deposit(id),
-    movement_id   BIGINT NOT NULL UNIQUE REFERENCES cash_movement(id),  -- la sortie caisse portant cette ligne
+    deposit_id    BIGINT NOT NULL REFERENCES cash_deposit(id) ON DELETE CASCADE,
+    instrument_id BIGINT NOT NULL REFERENCES settlement_instrument(id),
+    amount_minor  BIGINT NOT NULL CHECK (amount_minor > 0),
+    movement_id   BIGINT UNIQUE REFERENCES cash_movement(id),  -- NULL en brouillon ; posé à la validation
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE cash_deposit_item IS
-'Une ligne = un cash_movement de sortie (jamais de montant/devise dupliqués
- ici — toujours dérivés du mouvement, cf. anti-pattern legacy montant/
- montant_alloue explicitement rejeté). Le mouvement porte instrument_id
- (traçable) ou non (pool agrégé), selon la fonction utilisée pour créer la ligne.';
+'Ligne de bordereau. instrument_id + amount_minor obligatoires (un dépôt
+ peut ne couvrir qu''une PARTIE d''une remise d''espèces). movement_id
+ renseigné uniquement à la validation — cohérence brouillon/validé portée
+ par cash_validate_deposit, pas par un CHECK inter-tables.';
 
--- Dépôt d'une pièce/ligne individuellement traçable (chèque, LCN, PC ou
--- espèce individual). p_source_movement_id = le mouvement d'ENTRÉE d'origine.
-CREATE OR REPLACE FUNCTION cash_deposit_add_traceable_item(p_deposit_id BIGINT, p_source_movement_id BIGINT, p_amount_minor BIGINT, p_by BIGINT)
-RETURNS BIGINT LANGUAGE plpgsql AS $$
+CREATE INDEX idx_cash_deposit_item_deposit ON cash_deposit_item(deposit_id);
+
+-- Crée un bordereau en brouillon (aucun mouvement).
+CREATE OR REPLACE FUNCTION cash_create_deposit_draft(
+    p_session_id BIGINT, p_bank_account_id BIGINT, p_deposit_type_code VARCHAR(20),
+    p_reference VARCHAR(100), p_by BIGINT
+) RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE
-    v_session_id BIGINT; v_currency VARCHAR(3); v_instrument_id BIGINT;
-    v_account_currency VARCHAR(3); v_out_type BIGINT; v_out_id BIGINT; v_item_id BIGINT;
+    v_status VARCHAR(20);
+    v_deposit_id BIGINT;
 BEGIN
-    SELECT session_id, currency_code, instrument_id INTO v_session_id, v_currency, v_instrument_id
-    FROM cash_movement WHERE id = p_source_movement_id;
-
-    SELECT ba.currency_code INTO v_account_currency
-    FROM cash_deposit d JOIN cash_bank_account ba ON ba.id = d.bank_account_id
-    WHERE d.id = p_deposit_id;
-
-    IF v_currency IS DISTINCT FROM v_account_currency THEN
-        RAISE EXCEPTION 'Devise du mouvement source (%) <> devise du compte bancaire du bordereau (%)', v_currency, v_account_currency;
+    SELECT status_code INTO v_status FROM cash_session WHERE id = p_session_id FOR UPDATE;
+    IF v_status IS DISTINCT FROM 'open' THEN
+        RAISE EXCEPTION 'Session % introuvable ou non ouverte (statut %)', p_session_id, v_status;
     END IF;
 
-    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'bank_deposit_out';
-    INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, created_by)
-    VALUES (v_session_id, v_out_type, v_currency, -p_amount_minor, v_instrument_id, p_by)
-    RETURNING id INTO v_out_id;
+    INSERT INTO cash_deposit (session_id, bank_account_id, deposit_type_code, reference, deposited_by)
+    VALUES (p_session_id, p_bank_account_id, p_deposit_type_code, p_reference, p_by)
+    RETURNING id INTO v_deposit_id;
 
-    INSERT INTO cash_cash_allocation (source_movement_id, consumed_by_movement_id, amount_minor)
-    VALUES (p_source_movement_id, v_out_id, p_amount_minor);
-
-    INSERT INTO cash_deposit_item (deposit_id, movement_id) VALUES (p_deposit_id, v_out_id)
-    RETURNING id INTO v_item_id;
-
-    RETURN v_item_id;
+    RETURN v_deposit_id;
 END; $$;
 
--- Dépôt d'espèces en mode agrégé (pool, sans source individuelle désignée).
-CREATE OR REPLACE FUNCTION cash_deposit_add_aggregate_item(p_deposit_id BIGINT, p_session_id BIGINT, p_currency_code VARCHAR(3), p_amount_minor BIGINT, p_by BIGINT)
-RETURNS BIGINT LANGUAGE plpgsql AS $$
+-- Ajoute une ligne à un brouillon — AUCUN cash_movement.
+CREATE OR REPLACE FUNCTION cash_deposit_add_item(
+    p_deposit_id BIGINT, p_instrument_id BIGINT, p_amount_minor BIGINT, p_by BIGINT
+) RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE
-    v_out_id BIGINT; v_item_id BIGINT;
+    v_status VARCHAR(20);
+    v_item_id BIGINT;
 BEGIN
-    v_out_id := cash_post_outflow(p_session_id, 'bank_deposit_out', p_currency_code, p_amount_minor, 'Remise en banque (agrégé)', p_by);
-    INSERT INTO cash_deposit_item (deposit_id, movement_id) VALUES (p_deposit_id, v_out_id)
+    IF p_amount_minor <= 0 THEN
+        RAISE EXCEPTION 'amount_minor doit être > 0, reçu %', p_amount_minor;
+    END IF;
+
+    SELECT status_code INTO v_status FROM cash_deposit WHERE id = p_deposit_id FOR UPDATE;
+    IF v_status IS DISTINCT FROM 'draft' THEN
+        RAISE EXCEPTION 'Bordereau de dépôt % n''est pas en brouillon (statut %)', p_deposit_id, v_status;
+    END IF;
+
+    INSERT INTO cash_deposit_item (deposit_id, instrument_id, amount_minor)
+    VALUES (p_deposit_id, p_instrument_id, p_amount_minor)
     RETURNING id INTO v_item_id;
+
     RETURN v_item_id;
 END; $$;
 
--- Confirme le bordereau : crée LA transaction bancaire (somme des items),
--- fait passer la localisation des instruments traçables à 'bank_account'.
+-- Supprime un brouillon (et ses lignes). Interdit si validé/annulé.
+CREATE OR REPLACE FUNCTION cash_delete_deposit_draft(p_deposit_id BIGINT)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_status VARCHAR(20);
+BEGIN
+    SELECT status_code INTO v_status FROM cash_deposit WHERE id = p_deposit_id FOR UPDATE;
+    IF v_status IS DISTINCT FROM 'draft' THEN
+        RAISE EXCEPTION 'Seuls les brouillons de dépôt peuvent être supprimés (id=%, statut %)', p_deposit_id, v_status;
+    END IF;
+    DELETE FROM cash_deposit WHERE id = p_deposit_id;
+END; $$;
+
+-- Valide le brouillon : contrôle des fonds, crée les sorties, pose movement_id + horodatage.
+CREATE OR REPLACE FUNCTION cash_validate_deposit(p_deposit_id BIGINT, p_by BIGINT)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_dep RECORD;
+    v_session_status VARCHAR(20);
+    v_account_currency VARCHAR(3);
+    v_out_type BIGINT;
+    r RECORD;
+    v_src RECORD;
+    v_available BIGINT;
+    v_out_id BIGINT;
+    v_new_balance BIGINT;
+    v_remaining BIGINT;
+    v_take BIGINT;
+BEGIN
+    SELECT * INTO v_dep FROM cash_deposit WHERE id = p_deposit_id FOR UPDATE;
+    IF v_dep.id IS NULL THEN
+        RAISE EXCEPTION 'Bordereau de dépôt % introuvable', p_deposit_id;
+    END IF;
+    IF v_dep.status_code IS DISTINCT FROM 'draft' THEN
+        RAISE EXCEPTION 'Bordereau de dépôt % n''est pas en brouillon (statut %)', p_deposit_id, v_dep.status_code;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM cash_deposit_item WHERE deposit_id = p_deposit_id) THEN
+        RAISE EXCEPTION 'Bordereau de dépôt % vide : impossible de valider', p_deposit_id;
+    END IF;
+
+    SELECT status_code INTO v_session_status FROM cash_session WHERE id = v_dep.session_id FOR UPDATE;
+    IF v_session_status IS DISTINCT FROM 'open' THEN
+        RAISE EXCEPTION 'Session % du bordereau n''est pas ouverte (statut %)', v_dep.session_id, v_session_status;
+    END IF;
+
+    SELECT currency_code INTO v_account_currency FROM cash_bank_account WHERE id = v_dep.bank_account_id;
+    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'bank_deposit_out';
+
+    FOR r IN
+        SELECT di.id AS item_id, di.instrument_id, di.amount_minor, si.currency_code
+        FROM cash_deposit_item di
+        JOIN settlement_instrument si ON si.id = di.instrument_id
+        WHERE di.deposit_id = p_deposit_id
+        ORDER BY di.id
+    LOOP
+        IF r.currency_code IS DISTINCT FROM v_account_currency THEN
+            RAISE EXCEPTION 'Devise instrument % (%) <> devise compte bancaire (%)',
+                r.instrument_id, r.currency_code, v_account_currency;
+        END IF;
+
+        -- Fonds disponibles = restant non alloué des mouvements d'entrée de cette pièce dans la session
+        SELECT COALESCE(SUM(remaining), 0) INTO v_available
+        FROM (
+            SELECT cm.amount_minor - COALESCE((
+                SELECT SUM(a.amount_minor) FROM cash_cash_allocation a WHERE a.source_movement_id = cm.id
+            ), 0) AS remaining
+            FROM cash_movement cm
+            WHERE cm.session_id = v_dep.session_id
+              AND cm.instrument_id = r.instrument_id
+              AND cm.amount_minor > 0
+        ) s
+        WHERE remaining > 0;
+
+        IF v_available < r.amount_minor THEN
+            RAISE EXCEPTION
+                'Fonds insuffisants pour valider le dépôt % : instrument % disponible %, demandé %',
+                p_deposit_id, r.instrument_id, v_available, r.amount_minor;
+        END IF;
+
+        INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, memo, created_by)
+        VALUES (v_dep.session_id, v_out_type, r.currency_code, -r.amount_minor, r.instrument_id,
+                'Validation dépôt ' || p_deposit_id, p_by)
+        RETURNING id INTO v_out_id;
+
+        SELECT balance_minor INTO v_new_balance
+        FROM cash_session_balance WHERE session_id = v_dep.session_id AND currency_code = r.currency_code;
+        IF v_new_balance < 0 THEN
+            RAISE EXCEPTION 'Solde caisse insuffisant après sortie dépôt (session %, devise %, solde %)',
+                v_dep.session_id, r.currency_code, v_new_balance;
+        END IF;
+
+        -- Allouer FIFO sur les sources de cet instrument
+        v_remaining := r.amount_minor;
+        FOR v_src IN
+            SELECT cm.id AS source_id,
+                   cm.amount_minor - COALESCE((
+                       SELECT SUM(a.amount_minor) FROM cash_cash_allocation a WHERE a.source_movement_id = cm.id
+                   ), 0) AS remaining
+            FROM cash_movement cm
+            WHERE cm.session_id = v_dep.session_id
+              AND cm.instrument_id = r.instrument_id
+              AND cm.amount_minor > 0
+            ORDER BY cm.id
+        LOOP
+            EXIT WHEN v_remaining <= 0;
+            IF v_src.remaining <= 0 THEN
+                CONTINUE;
+            END IF;
+            v_take := LEAST(v_src.remaining, v_remaining);
+            INSERT INTO cash_cash_allocation (source_movement_id, consumed_by_movement_id, amount_minor)
+            VALUES (v_src.source_id, v_out_id, v_take);
+            v_remaining := v_remaining - v_take;
+        END LOOP;
+
+        UPDATE cash_deposit_item SET movement_id = v_out_id WHERE id = r.item_id;
+
+        INSERT INTO cash_instrument_location (instrument_id, location_type, deposit_id, updated_at)
+        VALUES (r.instrument_id, 'deposit', p_deposit_id, now())
+        ON CONFLICT (instrument_id) DO UPDATE
+        SET location_type = 'deposit', deposit_id = p_deposit_id,
+            session_id = NULL, bank_account_id = NULL, transmission_id = NULL, updated_at = now();
+    END LOOP;
+
+    UPDATE cash_deposit
+    SET status_code = 'validated', deposited_at = now(), deposited_by = p_by
+    WHERE id = p_deposit_id;
+END; $$;
+
+COMMENT ON FUNCTION cash_validate_deposit IS
+'Valide un brouillon de dépôt : contrôle des fonds à cet instant (pas de
+ réservation pendant le brouillon), crée les cash_movement de sortie,
+ renseigne movement_id, pose deposited_at, statut validated.';
+
+-- Annule un dépôt validé (pas confirmé) : contre-passation dans la session ouverte courante.
+CREATE OR REPLACE FUNCTION cash_cancel_deposit(p_deposit_id BIGINT, p_target_session_id BIGINT, p_reason TEXT, p_by BIGINT)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_dep RECORD;
+    v_target_status VARCHAR(20);
+    r RECORD;
+BEGIN
+    SELECT * INTO v_dep FROM cash_deposit WHERE id = p_deposit_id FOR UPDATE;
+    IF v_dep.id IS NULL THEN
+        RAISE EXCEPTION 'Bordereau de dépôt % introuvable', p_deposit_id;
+    END IF;
+    IF v_dep.status_code IS DISTINCT FROM 'validated' THEN
+        RAISE EXCEPTION 'Seuls les dépôts validés peuvent être annulés (id=%, statut %)', p_deposit_id, v_dep.status_code;
+    END IF;
+    IF v_dep.confirmed_transaction_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Dépôt % déjà confirmé en banque (transaction %) : annulation interdite (point de non-retour)',
+            p_deposit_id, v_dep.confirmed_transaction_id;
+    END IF;
+
+    SELECT status_code INTO v_target_status FROM cash_session WHERE id = p_target_session_id FOR UPDATE;
+    IF v_target_status IS DISTINCT FROM 'open' THEN
+        RAISE EXCEPTION 'Session cible % doit être ouverte pour recevoir la contre-passation (statut %)',
+            p_target_session_id, v_target_status;
+    END IF;
+
+    FOR r IN
+        SELECT di.movement_id, di.instrument_id
+        FROM cash_deposit_item di
+        WHERE di.deposit_id = p_deposit_id AND di.movement_id IS NOT NULL
+        ORDER BY di.id
+    LOOP
+        -- Libérer les allocations dont ce mouvement de sortie était consommateur
+        DELETE FROM cash_cash_allocation WHERE consumed_by_movement_id = r.movement_id;
+
+        PERFORM cash_reverse_movement(r.movement_id, p_target_session_id,
+            COALESCE(p_reason, 'Annulation dépôt ' || p_deposit_id), p_by);
+
+        INSERT INTO cash_instrument_location (instrument_id, location_type, session_id, updated_at)
+        VALUES (r.instrument_id, 'session', p_target_session_id, now())
+        ON CONFLICT (instrument_id) DO UPDATE
+        SET location_type = 'session', session_id = p_target_session_id,
+            deposit_id = NULL, bank_account_id = NULL, transmission_id = NULL, updated_at = now();
+    END LOOP;
+
+    UPDATE cash_deposit SET status_code = 'cancelled' WHERE id = p_deposit_id;
+END; $$;
+
+-- Confirme le bordereau validé : crée LA transaction bancaire (somme des items).
 CREATE OR REPLACE FUNCTION cash_confirm_deposit(p_deposit_id BIGINT, p_value_date DATE, p_by BIGINT)
 RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE
-    v_bank_account_id BIGINT; v_total BIGINT; v_type_id BIGINT; v_tx_id BIGINT; r RECORD;
+    v_dep RECORD;
+    v_total BIGINT; v_type_id BIGINT; v_tx_id BIGINT; r RECORD;
 BEGIN
-    SELECT bank_account_id INTO v_bank_account_id FROM cash_deposit WHERE id = p_deposit_id;
+    SELECT * INTO v_dep FROM cash_deposit WHERE id = p_deposit_id FOR UPDATE;
+    IF v_dep.status_code IS DISTINCT FROM 'validated' THEN
+        RAISE EXCEPTION 'Seuls les dépôts validés peuvent être confirmés (id=%, statut %)', p_deposit_id, v_dep.status_code;
+    END IF;
+    IF v_dep.confirmed_transaction_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Dépôt % déjà confirmé (transaction %)', p_deposit_id, v_dep.confirmed_transaction_id;
+    END IF;
 
     SELECT SUM(-cm.amount_minor) INTO v_total
     FROM cash_deposit_item di JOIN cash_movement cm ON cm.id = di.movement_id
@@ -1029,7 +1260,7 @@ BEGIN
 
     SELECT id INTO v_type_id FROM cash_bank_transaction_type WHERE code = 'bank_deposit';
     INSERT INTO cash_bank_transaction (bank_account_id, transaction_type_id, amount_minor, deposit_id, value_date, created_by)
-    VALUES (v_bank_account_id, v_type_id, v_total, p_deposit_id, COALESCE(p_value_date, CURRENT_DATE), p_by)
+    VALUES (v_dep.bank_account_id, v_type_id, v_total, p_deposit_id, COALESCE(p_value_date, CURRENT_DATE), p_by)
     RETURNING id INTO v_tx_id;
 
     UPDATE cash_deposit SET confirmed_transaction_id = v_tx_id WHERE id = p_deposit_id;
@@ -1040,9 +1271,9 @@ BEGIN
         WHERE di.deposit_id = p_deposit_id AND cm.instrument_id IS NOT NULL
     LOOP
         INSERT INTO cash_instrument_location (instrument_id, location_type, bank_account_id, updated_at)
-        VALUES (r.instrument_id, 'bank_account', v_bank_account_id, now())
+        VALUES (r.instrument_id, 'bank_account', v_dep.bank_account_id, now())
         ON CONFLICT (instrument_id) DO UPDATE
-        SET location_type = 'bank_account', bank_account_id = v_bank_account_id,
+        SET location_type = 'bank_account', bank_account_id = v_dep.bank_account_id,
             session_id = NULL, deposit_id = NULL, transmission_id = NULL, updated_at = now();
     END LOOP;
 
@@ -1051,70 +1282,267 @@ END; $$;
 
 -- ============================================================
 -- 16. TRANSMISSION EXTERNE (bon de commande / prise en charge)
+--     Même cycle de vie brouillon/validation que cash_deposit (§67).
 -- ============================================================
 
 CREATE TABLE cash_external_transmission (
     id                        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     public_id                 UUID NOT NULL DEFAULT gen_random_uuid(),
-    transmitted_to_account_id  BIGINT NOT NULL REFERENCES party_account(id),  -- l'amicale émettrice
-    reference                    VARCHAR(100),
-    transmitted_at                 TIMESTAMPTZ NOT NULL DEFAULT now(),
-    transmitted_by                    BIGINT REFERENCES party_account(id)
+    session_id                BIGINT NOT NULL REFERENCES cash_session(id),
+    transmitted_to_account_id BIGINT NOT NULL REFERENCES party_account(id),  -- l'amicale émettrice
+    status_code               VARCHAR(20) NOT NULL DEFAULT 'draft'
+                                 CHECK (status_code IN ('draft','validated','cancelled')),
+    reference                 VARCHAR(100),
+    transmitted_at            TIMESTAMPTZ,  -- NULL tant que brouillon
+    transmitted_by            BIGINT REFERENCES party_account(id),
+    CONSTRAINT chk_transmission_lifecycle CHECK (
+        (status_code = 'draft'     AND transmitted_at IS NULL)
+        OR (status_code = 'validated' AND transmitted_at IS NOT NULL)
+        OR (status_code = 'cancelled' AND transmitted_at IS NOT NULL)
+    )
 );
 
 COMMENT ON TABLE cash_external_transmission IS
-'Bordereau de transmission (regroupement dès la V1 — décision actée, même
- triptyque header/items que cash_deposit pour éviter toute restructuration
- future). Le statut global se dérive des items, jamais stocké en dur.';
+'Bordereau de transmission. Même triptyque header/items et même cycle
+ draft/validated/cancelled que cash_deposit (§67). Un seul brouillon par
+ session. Le statut métier par ligne (transmitted/settled/disputed) vit sur
+ les items après validation du bordereau.';
+
+CREATE UNIQUE INDEX uq_cash_transmission_one_draft_per_session
+    ON cash_external_transmission(session_id) WHERE status_code = 'draft';
+CREATE UNIQUE INDEX uq_cash_external_transmission_public_id ON cash_external_transmission(public_id);
+CREATE INDEX idx_cash_external_transmission_session ON cash_external_transmission(session_id);
 
 ALTER TABLE cash_instrument_location
     ADD CONSTRAINT fk_cash_instrument_location_transmission FOREIGN KEY (transmission_id) REFERENCES cash_external_transmission(id);
 
 CREATE TABLE cash_external_transmission_item (
     id                         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    transmission_id             BIGINT NOT NULL REFERENCES cash_external_transmission(id),
-    movement_id                   BIGINT NOT NULL UNIQUE REFERENCES cash_movement(id),
-    accompanying_invoice_id          BIGINT,  -- crochet futur Facturation, lu par id
-    status_code                        VARCHAR(20) NOT NULL DEFAULT 'transmitted'
-                                          CHECK (status_code IN ('transmitted','settled','disputed')),
-    settlement_instrument_id             BIGINT REFERENCES settlement_instrument(id),  -- la pièce de remboursement reçue
-    created_at                             TIMESTAMPTZ NOT NULL DEFAULT now()
+    transmission_id            BIGINT NOT NULL REFERENCES cash_external_transmission(id) ON DELETE CASCADE,
+    instrument_id              BIGINT NOT NULL REFERENCES settlement_instrument(id),
+    amount_minor               BIGINT NOT NULL CHECK (amount_minor > 0),
+    movement_id                BIGINT UNIQUE REFERENCES cash_movement(id),  -- NULL en brouillon
+    accompanying_invoice_id    BIGINT,  -- crochet futur Facturation
+    status_code                VARCHAR(20) NOT NULL DEFAULT 'draft'
+                                  CHECK (status_code IN ('draft','transmitted','settled','disputed')),
+    settlement_instrument_id   BIGINT REFERENCES settlement_instrument(id),  -- pièce de remboursement
+    created_at                 TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE cash_external_transmission_item IS
-'Le statut par ligne (pas seulement par bordereau) car une amicale peut
- rembourser certaines PC et pas d''autres. status_code global du bordereau =
- dérivé (tout ''settled'' / mixte / tout ''transmitted''), jamais stocké.';
+'Ligne de transmission. status_code : draft (brouillon) → transmitted (à la
+ validation du bordereau) → settled|disputed. Révision §65/§67 : DEFAULT
+ draft, pas transmitted — une ligne non validée n''est PAS transmise.';
 
-CREATE OR REPLACE FUNCTION cash_transmission_add_item(p_transmission_id BIGINT, p_source_movement_id BIGINT, p_accompanying_invoice_id BIGINT, p_by BIGINT)
-RETURNS BIGINT LANGUAGE plpgsql AS $$
+CREATE INDEX idx_cash_transmission_item_transmission ON cash_external_transmission_item(transmission_id);
+
+CREATE OR REPLACE FUNCTION cash_create_transmission_draft(
+    p_session_id BIGINT, p_transmitted_to_account_id BIGINT, p_reference VARCHAR(100), p_by BIGINT
+) RETURNS BIGINT LANGUAGE plpgsql AS $$
 DECLARE
-    v_session_id BIGINT; v_currency VARCHAR(3); v_instrument_id BIGINT; v_amount BIGINT;
-    v_out_type BIGINT; v_out_id BIGINT; v_item_id BIGINT;
+    v_status VARCHAR(20);
+    v_id BIGINT;
 BEGIN
-    SELECT session_id, currency_code, instrument_id, amount_minor
-    INTO v_session_id, v_currency, v_instrument_id, v_amount
-    FROM cash_movement WHERE id = p_source_movement_id;
+    SELECT status_code INTO v_status FROM cash_session WHERE id = p_session_id FOR UPDATE;
+    IF v_status IS DISTINCT FROM 'open' THEN
+        RAISE EXCEPTION 'Session % introuvable ou non ouverte (statut %)', p_session_id, v_status;
+    END IF;
 
-    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'external_transmission_out';
-    INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, created_by)
-    VALUES (v_session_id, v_out_type, v_currency, -v_amount, v_instrument_id, p_by)
-    RETURNING id INTO v_out_id;
+    INSERT INTO cash_external_transmission (session_id, transmitted_to_account_id, reference, transmitted_by)
+    VALUES (p_session_id, p_transmitted_to_account_id, p_reference, p_by)
+    RETURNING id INTO v_id;
 
-    INSERT INTO cash_cash_allocation (source_movement_id, consumed_by_movement_id, amount_minor)
-    VALUES (p_source_movement_id, v_out_id, v_amount);
+    RETURN v_id;
+END; $$;
 
-    INSERT INTO cash_external_transmission_item (transmission_id, movement_id, accompanying_invoice_id)
-    VALUES (p_transmission_id, v_out_id, p_accompanying_invoice_id)
+CREATE OR REPLACE FUNCTION cash_transmission_add_item(
+    p_transmission_id BIGINT, p_instrument_id BIGINT, p_amount_minor BIGINT,
+    p_accompanying_invoice_id BIGINT, p_by BIGINT
+) RETURNS BIGINT LANGUAGE plpgsql AS $$
+DECLARE
+    v_status VARCHAR(20);
+    v_item_id BIGINT;
+BEGIN
+    IF p_amount_minor <= 0 THEN
+        RAISE EXCEPTION 'amount_minor doit être > 0, reçu %', p_amount_minor;
+    END IF;
+
+    SELECT status_code INTO v_status FROM cash_external_transmission WHERE id = p_transmission_id FOR UPDATE;
+    IF v_status IS DISTINCT FROM 'draft' THEN
+        RAISE EXCEPTION 'Bordereau de transmission % n''est pas en brouillon (statut %)', p_transmission_id, v_status;
+    END IF;
+
+    INSERT INTO cash_external_transmission_item (transmission_id, instrument_id, amount_minor, accompanying_invoice_id)
+    VALUES (p_transmission_id, p_instrument_id, p_amount_minor, p_accompanying_invoice_id)
     RETURNING id INTO v_item_id;
 
-    INSERT INTO cash_instrument_location (instrument_id, location_type, transmission_id, updated_at)
-    VALUES (v_instrument_id, 'transmission', p_transmission_id, now())
-    ON CONFLICT (instrument_id) DO UPDATE
-    SET location_type = 'transmission', transmission_id = p_transmission_id,
-        session_id = NULL, deposit_id = NULL, bank_account_id = NULL, updated_at = now();
-
     RETURN v_item_id;
+END; $$;
+
+CREATE OR REPLACE FUNCTION cash_delete_transmission_draft(p_transmission_id BIGINT)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_status VARCHAR(20);
+BEGIN
+    SELECT status_code INTO v_status FROM cash_external_transmission WHERE id = p_transmission_id FOR UPDATE;
+    IF v_status IS DISTINCT FROM 'draft' THEN
+        RAISE EXCEPTION 'Seuls les brouillons de transmission peuvent être supprimés (id=%, statut %)', p_transmission_id, v_status;
+    END IF;
+    DELETE FROM cash_external_transmission WHERE id = p_transmission_id;
+END; $$;
+
+CREATE OR REPLACE FUNCTION cash_validate_transmission(p_transmission_id BIGINT, p_by BIGINT)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_tr RECORD;
+    v_session_status VARCHAR(20);
+    v_out_type BIGINT;
+    r RECORD;
+    v_src RECORD;
+    v_available BIGINT;
+    v_out_id BIGINT;
+    v_new_balance BIGINT;
+    v_remaining BIGINT;
+    v_take BIGINT;
+BEGIN
+    SELECT * INTO v_tr FROM cash_external_transmission WHERE id = p_transmission_id FOR UPDATE;
+    IF v_tr.id IS NULL THEN
+        RAISE EXCEPTION 'Bordereau de transmission % introuvable', p_transmission_id;
+    END IF;
+    IF v_tr.status_code IS DISTINCT FROM 'draft' THEN
+        RAISE EXCEPTION 'Bordereau de transmission % n''est pas en brouillon (statut %)', p_transmission_id, v_tr.status_code;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM cash_external_transmission_item WHERE transmission_id = p_transmission_id) THEN
+        RAISE EXCEPTION 'Bordereau de transmission % vide : impossible de valider', p_transmission_id;
+    END IF;
+
+    SELECT status_code INTO v_session_status FROM cash_session WHERE id = v_tr.session_id FOR UPDATE;
+    IF v_session_status IS DISTINCT FROM 'open' THEN
+        RAISE EXCEPTION 'Session % du bordereau n''est pas ouverte (statut %)', v_tr.session_id, v_session_status;
+    END IF;
+
+    SELECT id INTO v_out_type FROM cash_movement_type WHERE code = 'external_transmission_out';
+
+    FOR r IN
+        SELECT ti.id AS item_id, ti.instrument_id, ti.amount_minor, si.currency_code
+        FROM cash_external_transmission_item ti
+        JOIN settlement_instrument si ON si.id = ti.instrument_id
+        WHERE ti.transmission_id = p_transmission_id
+        ORDER BY ti.id
+    LOOP
+        SELECT COALESCE(SUM(remaining), 0) INTO v_available
+        FROM (
+            SELECT cm.amount_minor - COALESCE((
+                SELECT SUM(a.amount_minor) FROM cash_cash_allocation a WHERE a.source_movement_id = cm.id
+            ), 0) AS remaining
+            FROM cash_movement cm
+            WHERE cm.session_id = v_tr.session_id
+              AND cm.instrument_id = r.instrument_id
+              AND cm.amount_minor > 0
+        ) s
+        WHERE remaining > 0;
+
+        IF v_available < r.amount_minor THEN
+            RAISE EXCEPTION
+                'Fonds insuffisants pour valider la transmission % : instrument % disponible %, demandé %',
+                p_transmission_id, r.instrument_id, v_available, r.amount_minor;
+        END IF;
+
+        INSERT INTO cash_movement (session_id, movement_type_id, currency_code, amount_minor, instrument_id, memo, created_by)
+        VALUES (v_tr.session_id, v_out_type, r.currency_code, -r.amount_minor, r.instrument_id,
+                'Validation transmission ' || p_transmission_id, p_by)
+        RETURNING id INTO v_out_id;
+
+        SELECT balance_minor INTO v_new_balance
+        FROM cash_session_balance WHERE session_id = v_tr.session_id AND currency_code = r.currency_code;
+        IF v_new_balance < 0 THEN
+            RAISE EXCEPTION 'Solde caisse insuffisant après sortie transmission (session %, devise %, solde %)',
+                v_tr.session_id, r.currency_code, v_new_balance;
+        END IF;
+
+        v_remaining := r.amount_minor;
+        FOR v_src IN
+            SELECT cm.id AS source_id,
+                   cm.amount_minor - COALESCE((
+                       SELECT SUM(a.amount_minor) FROM cash_cash_allocation a WHERE a.source_movement_id = cm.id
+                   ), 0) AS remaining
+            FROM cash_movement cm
+            WHERE cm.session_id = v_tr.session_id
+              AND cm.instrument_id = r.instrument_id
+              AND cm.amount_minor > 0
+            ORDER BY cm.id
+        LOOP
+            EXIT WHEN v_remaining <= 0;
+            IF v_src.remaining <= 0 THEN
+                CONTINUE;
+            END IF;
+            v_take := LEAST(v_src.remaining, v_remaining);
+            INSERT INTO cash_cash_allocation (source_movement_id, consumed_by_movement_id, amount_minor)
+            VALUES (v_src.source_id, v_out_id, v_take);
+            v_remaining := v_remaining - v_take;
+        END LOOP;
+
+        UPDATE cash_external_transmission_item
+        SET movement_id = v_out_id, status_code = 'transmitted'
+        WHERE id = r.item_id;
+
+        INSERT INTO cash_instrument_location (instrument_id, location_type, transmission_id, updated_at)
+        VALUES (r.instrument_id, 'transmission', p_transmission_id, now())
+        ON CONFLICT (instrument_id) DO UPDATE
+        SET location_type = 'transmission', transmission_id = p_transmission_id,
+            session_id = NULL, deposit_id = NULL, bank_account_id = NULL, updated_at = now();
+    END LOOP;
+
+    UPDATE cash_external_transmission
+    SET status_code = 'validated', transmitted_at = now(), transmitted_by = p_by
+    WHERE id = p_transmission_id;
+END; $$;
+
+CREATE OR REPLACE FUNCTION cash_cancel_transmission(p_transmission_id BIGINT, p_target_session_id BIGINT, p_reason TEXT, p_by BIGINT)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_tr RECORD;
+    v_target_status VARCHAR(20);
+    r RECORD;
+BEGIN
+    SELECT * INTO v_tr FROM cash_external_transmission WHERE id = p_transmission_id FOR UPDATE;
+    IF v_tr.id IS NULL THEN
+        RAISE EXCEPTION 'Bordereau de transmission % introuvable', p_transmission_id;
+    END IF;
+    IF v_tr.status_code IS DISTINCT FROM 'validated' THEN
+        RAISE EXCEPTION 'Seules les transmissions validées peuvent être annulées (id=%, statut %)', p_transmission_id, v_tr.status_code;
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM cash_external_transmission_item
+        WHERE transmission_id = p_transmission_id AND status_code IN ('settled','disputed')
+    ) THEN
+        RAISE EXCEPTION 'Transmission % : au moins une ligne settled/disputed — annulation interdite', p_transmission_id;
+    END IF;
+
+    SELECT status_code INTO v_target_status FROM cash_session WHERE id = p_target_session_id FOR UPDATE;
+    IF v_target_status IS DISTINCT FROM 'open' THEN
+        RAISE EXCEPTION 'Session cible % doit être ouverte (statut %)', p_target_session_id, v_target_status;
+    END IF;
+
+    FOR r IN
+        SELECT ti.movement_id, ti.instrument_id, ti.id AS item_id
+        FROM cash_external_transmission_item ti
+        WHERE ti.transmission_id = p_transmission_id AND ti.movement_id IS NOT NULL
+        ORDER BY ti.id
+    LOOP
+        DELETE FROM cash_cash_allocation WHERE consumed_by_movement_id = r.movement_id;
+
+        PERFORM cash_reverse_movement(r.movement_id, p_target_session_id,
+            COALESCE(p_reason, 'Annulation transmission ' || p_transmission_id), p_by);
+
+        INSERT INTO cash_instrument_location (instrument_id, location_type, session_id, updated_at)
+        VALUES (r.instrument_id, 'session', p_target_session_id, now())
+        ON CONFLICT (instrument_id) DO UPDATE
+        SET location_type = 'session', session_id = p_target_session_id,
+            deposit_id = NULL, bank_account_id = NULL, transmission_id = NULL, updated_at = now();
+    END LOOP;
+
+    UPDATE cash_external_transmission SET status_code = 'cancelled' WHERE id = p_transmission_id;
 END; $$;
 
 CREATE OR REPLACE FUNCTION cash_transmission_settle_item(p_item_id BIGINT, p_settlement_instrument_id BIGINT)
@@ -1122,7 +1550,10 @@ RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
     UPDATE cash_external_transmission_item
     SET status_code = 'settled', settlement_instrument_id = p_settlement_instrument_id
-    WHERE id = p_item_id;
+    WHERE id = p_item_id AND status_code = 'transmitted';
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Item transmission % introuvable ou non transmitted', p_item_id;
+    END IF;
 END; $$;
 
 -- ============================================================

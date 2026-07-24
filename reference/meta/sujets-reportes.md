@@ -808,6 +808,8 @@ Commits : e20b21d, f67a56b.
 
 **15 défauts conservés** : états de naissance de cycle de vie (`draft` ×4, `open`, `active` ×2, `pending` ×2, `unpaid`, `transmitted`), les 3 discriminants Pricing (verrouillés par CHECK + FK composite, la valeur ne peut jamais être autre chose), et la politique de sécurité 5 tentatives / 15 minutes.
 
+**Note de révision (§67, 24/07)** : la conservation du `DEFAULT 'transmitted'` sur `cash_external_transmission_item.status_code` (décision n°6 de cet audit) est **révisée** par §67 — avec l'état brouillon des bordereaux, une ligne non validée n'est PAS transmise ; le DEFAULT devient `'draft'` et le cycle `draft → transmitted → settled|disputed`.
+
 **Incident en cours de route** : les triggers 2FA avaient été placés dans `diff-core-auth-avancee.sql` (étape 7) alors que `trg_config_protect_mfa_issuer` porte sur `config_application_setting`, créée à l'étape 15 — chaîne cassée, corrigée par déplacement. Rappel : toujours vérifier l'ordre d'exécution avant de placer un objet qui référence deux tables.
 
 Commits : 63dd92d, 47cde89.
@@ -833,17 +835,22 @@ Commits : 63dd92d, 47cde89.
 
 Commit : ba96690.
 
-## 67. Cycle de vie du bordereau de transmission externe — OUVERT (24/07/2026)
+## 67. Cycle de vie brouillon/validation des bordereaux (dépôt + transmission) — ✅ RÉSOLU le 24/07/2026
 
-**Origine** : soulevé pendant l'audit des valeurs par défaut, en examinant `cash_external_transmission_item.status_code DEFAULT 'transmitted'`.
+**Origine** : soulevé pendant l'audit des valeurs par défaut (§65), en examinant `cash_external_transmission_item.status_code DEFAULT 'transmitted'`. Élargi aux DEUX tables du triptyque header/items (`cash_deposit` et `cash_external_transmission`).
 
-**Constat** : le modèle actuel ne permet pas ce que l'utilisateur décrit comme le fonctionnement réel. Aujourd'hui `cash_external_transmission.transmitted_at` est `NOT NULL DEFAULT now()` et le bordereau n'a AUCUNE colonne de statut — créer un bordereau, c'est le transmettre. Or l'utilisateur a confirmé qu'un caissier doit pouvoir **préparer** un bordereau, le **valider**, le **rouvrir** pour modifier, et le **supprimer**.
+**7 décisions utilisateur (24/07)** :
+1. Le brouillon n'a **aucun effet comptable** (aucun `cash_movement` ; solde caisse = tiroir physique).
+2. **Clôture de session refusée** s'il reste un brouillon — un brouillon ne survit jamais à une clôture.
+3. **Un seul brouillon à la fois** par session (et par type de bordereau — index unique partiel).
+4. Brouillon **supprimable** ; validé **annulable avec trace** (contre-passation) — jamais de suppression physique après validation.
+5. **Pas de transition « réouverture »** — pour corriger : annuler puis recréer (architecte DB, validé utilisateur).
+6. **Confirmation bancaire = point de non-retour**.
+7. Contrôle des fonds **à la validation**, pas de réservation pendant le brouillon.
 
-**Impliquerait** : un statut sur `cash_external_transmission` (brouillon → validé), `transmitted_at` nullable tant qu'on est en brouillon, une transition de réouverture, et des règles de suppression (probablement interdite après validation, comme partout ailleurs dans le projet).
+**Appliqué** : `status_code` + `session_id` + lifecycle CHECK + index unique brouillon sur les deux en-têtes ; `deposited_at`/`transmitted_at` nullable ; lignes avec `instrument_id` + `amount_minor` obligatoires, `movement_id` nullable ; item transmission DEFAULT `'draft'` (révise §65) ; `cash_close_session` refuse les brouillons (contrôle dans la fonction, pas un nouveau trigger) ; fonctions `cash_create_*_draft`, `cash_*_add_item`, `cash_delete_*_draft`, `cash_validate_*`, `cash_cancel_*`.
 
-**Conséquence en cascade** : si l'état brouillon est ajouté, les lignes d'un bordereau non validé ne sont PAS transmises — le défaut `'transmitted'` sur `cash_external_transmission_item` (conservé au §65) deviendra faux et devra être revu.
-
-**À vérifier avant de s'y engager** : le commentaire du schéma indique que `cash_external_transmission` suit « le même triptyque header/items que `cash_deposit` ». Le même défaut de conception existe donc peut-être à l'identique sur les dépôts en banque — élargir le périmètre en conséquence.
+**Écart runtime** : `cash_deposit` / `cash_external_transmission` absentes en base — changements dans `reference/` uniquement. Index `uq_cash_movement_instrument_per_session` resserré (encaissements uniquement) pour permettre sorties/contre-passations du même instrument — nécessaire au §67, aligné sur l'intention §63.
 
 ## 68. Nom du produit dans les commentaires du schéma — ✅ RÉSOLU le 24/07/2026
 

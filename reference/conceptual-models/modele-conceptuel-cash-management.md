@@ -83,7 +83,20 @@ Corrige deux limites legacy : l'hypothèse "1 compte = 1 bureau" (corrigée le 1
 `cash_conversion` remplace le contournement legacy "achat devise + mouvement caisse + paiement fournisseur" (cas concret : client algérien réglant un fournisseur tunisien en TND depuis une caisse DZD) par un geste unique, traçable, à deux jambes dans la même session.
 
 ### 13. Transmission externe (bon de commande / prise en charge)
-`routing_type_code='transmission_externe'` + `cash_external_transmission`/`_item` répondent au flux amicale → bon de commande → transmission → remboursement, non géré en legacy. Statut porté **par ligne**, pas par bordereau (une amicale peut régler certaines PC et pas d'autres). Regroupement dès la V1 (décision actée, pour éviter une restructuration ultérieure).
+`routing_type_code='external_transmission'` + `cash_external_transmission`/`_item` répondent au flux amicale → bon de commande → transmission → remboursement, non géré en legacy. Statut métier porté **par ligne** après validation du bordereau (une amicale peut régler certaines PC et pas d'autres). Regroupement dès la V1 (décision actée, pour éviter une restructuration ultérieure).
+
+### 14. Cycle de vie brouillon / validation des bordereaux (§67, 24/07)
+`cash_deposit` et `cash_external_transmission` partagent le même cycle `draft` → `validated` → `cancelled` :
+
+1. Un **brouillon n'a aucun effet comptable** — aucun `cash_movement` tant que non validé ; le solde caisse reflète le tiroir physique.
+2. **Clôture de session refusée** s'il reste un brouillon (`cash_close_session`) — un brouillon ne survit jamais à une clôture.
+3. **Un seul brouillon par session** et par type de bordereau (index unique partiel).
+4. Brouillon **supprimable** ; validé **annulable avec trace** (contre-passation dans la session ouverte courante) ; jamais de suppression physique après validation.
+5. **Pas de réouverture** — pour corriger : annuler puis recréer.
+6. **Confirmation bancaire = point de non-retour** (`confirmed_transaction_id`).
+7. Contrôle des fonds **à la validation**, pas de réservation pendant le brouillon.
+
+`session_id` est explicite sur l'en-tête (un brouillon n'ayant pas de mouvement, le lien ne peut plus se déduire). Les lignes portent `instrument_id` + `amount_minor` (montant obligatoire : dépôt partiel d'espèces possible) ; `movement_id` est posé à la validation.
 
 ---
 
