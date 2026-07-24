@@ -18,7 +18,6 @@ final class PartyAccountOrganizationIdentityTest extends TestCase
             taxId: '14455455AM000',
             tradeRegister: null,
             legalFormCode: null,
-            isVatSubject: false,
             website: 'https://www.mygo.co',
         );
 
@@ -26,7 +25,6 @@ final class PartyAccountOrganizationIdentityTest extends TestCase
         self::assertSame('14455455AM000', $identity->taxId());
         self::assertNull($identity->tradeRegister());
         self::assertNull($identity->legalFormCode());
-        self::assertFalse($identity->isVatSubject());
         self::assertSame('https://www.mygo.co', $identity->website());
     }
 
@@ -38,13 +36,13 @@ final class PartyAccountOrganizationIdentityTest extends TestCase
             null,
             null,
             null,
-            true,
             null,
         );
 
         self::assertSame(42, $identity->accountId());
         self::assertNull($identity->taxId());
-        self::assertTrue($identity->isVatSubject());
+        self::assertNull($identity->tradeRegister());
+        self::assertNull($identity->legalFormCode());
         self::assertNull($identity->website());
     }
 }

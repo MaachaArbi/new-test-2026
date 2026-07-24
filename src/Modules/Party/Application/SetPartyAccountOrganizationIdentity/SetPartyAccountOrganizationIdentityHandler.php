@@ -36,7 +36,6 @@ final class SetPartyAccountOrganizationIdentityHandler
             $command->taxId,
             $command->tradeRegister,
             $command->legalFormCode,
-            $command->isVatSubject,
             $command->website,
         );
 

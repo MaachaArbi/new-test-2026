@@ -18,7 +18,6 @@
         <field name="taxId" type="string" column="tax_id" length="50" nullable="true"/>
         <field name="tradeRegister" type="string" column="trade_register" length="50" nullable="true"/>
         <field name="legalFormCode" type="string" column="legal_form_code" length="30" nullable="true"/>
-        <field name="isVatSubject" type="boolean" column="is_vat_subject" nullable="false"/>
         <field name="website" type="string" column="website" length="255" nullable="true"/>
     </entity>
 </doctrine-mapping>

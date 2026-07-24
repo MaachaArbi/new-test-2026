@@ -14,7 +14,6 @@ final readonly class SetPartyAccountOrganizationIdentityCommand
         public ?string $taxId,
         public ?string $tradeRegister,
         public ?string $legalFormCode,
-        public bool $isVatSubject,
         public ?string $website,
     ) {
     }

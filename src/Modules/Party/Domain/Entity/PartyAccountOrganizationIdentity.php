@@ -7,6 +7,7 @@ namespace App\Modules\Party\Domain\Entity;
 /**
  * Extension 1-1 party_account_organization_identity (PK = account_id).
  * Pas d'historisation. Pas de setters — corrections hors périmètre de ce prompt.
+ * Assujettissement TVA : party_account_tax_exemption (agrégat distinct), pas un booléen ici.
  */
 final class PartyAccountOrganizationIdentity
 {
@@ -15,7 +16,6 @@ final class PartyAccountOrganizationIdentity
         private ?string $taxId,
         private ?string $tradeRegister,
         private ?string $legalFormCode,
-        private bool $isVatSubject,
         private ?string $website,
     ) {
     }
@@ -25,7 +25,6 @@ final class PartyAccountOrganizationIdentity
         ?string $taxId,
         ?string $tradeRegister,
         ?string $legalFormCode,
-        bool $isVatSubject,
         ?string $website,
     ): self {
         return new self(
@@ -33,7 +32,6 @@ final class PartyAccountOrganizationIdentity
             $taxId,
             $tradeRegister,
             $legalFormCode,
-            $isVatSubject,
             $website,
         );
     }
@@ -56,11 +54,6 @@ final class PartyAccountOrganizationIdentity
     public function legalFormCode(): ?string
     {
         return $this->legalFormCode;
-    }
-
-    public function isVatSubject(): bool
-    {
-        return $this->isVatSubject;
     }
 
     public function website(): ?string

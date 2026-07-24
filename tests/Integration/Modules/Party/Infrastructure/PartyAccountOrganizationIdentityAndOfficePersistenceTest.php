@@ -69,15 +69,13 @@ final class PartyAccountOrganizationIdentityAndOfficePersistenceTest extends Ker
         $this->setIdentityHandler = new SetPartyAccountOrganizationIdentityHandler(
             $this->accountRepository,
             $this->identityRepository,
-
             $this->unitOfWork
-);
+        );
         $this->setOfficeHandler = new SetPartyAccountOfficeHandler(
             $this->accountRepository,
             $this->officeRepository,
-
             $this->unitOfWork
-);
+        );
     }
 
     public function test_organization_identity_round_trip(): void
@@ -89,7 +87,6 @@ final class PartyAccountOrganizationIdentityAndOfficePersistenceTest extends Ker
             taxId: 'TAX-RT-001',
             tradeRegister: 'RC-001',
             legalFormCode: 'SARL',
-            isVatSubject: true,
             website: 'https://example.org',
         ));
 
@@ -101,7 +98,6 @@ final class PartyAccountOrganizationIdentityAndOfficePersistenceTest extends Ker
         self::assertSame('TAX-RT-001', $reloaded->taxId());
         self::assertSame('RC-001', $reloaded->tradeRegister());
         self::assertSame('SARL', $reloaded->legalFormCode());
-        self::assertTrue($reloaded->isVatSubject());
         self::assertSame('https://example.org', $reloaded->website());
     }
 
@@ -135,7 +131,6 @@ final class PartyAccountOrganizationIdentityAndOfficePersistenceTest extends Ker
                 'TAX',
                 null,
                 null,
-                false,
                 null,
             ));
             self::fail('Expected PartyAccountNotFoundException');
@@ -155,7 +150,6 @@ final class PartyAccountOrganizationIdentityAndOfficePersistenceTest extends Ker
                 'TAX',
                 null,
                 null,
-                false,
                 null,
             ));
             self::fail('Expected PartyAccountMustBeOrganizationException');
@@ -228,7 +222,6 @@ final class PartyAccountOrganizationIdentityAndOfficePersistenceTest extends Ker
         self::assertNotNull($identity);
         self::assertSame('14455455AM000', $identity->taxId());
         self::assertSame('https://www.mygo.co', $identity->website());
-        self::assertFalse($identity->isVatSubject());
 
         $office = $this->officeRepository->findByAccountId($accountId);
         self::assertNotNull($office);

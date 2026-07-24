@@ -38,8 +38,6 @@ final class BootstrapAgencyAccountCommand extends Command
 
     private const WEBSITE = 'https://www.mygo.co';
 
-    private const IS_VAT_SUBJECT = false;
-
     private const OFFICE_CODE = 'MYGO-2023';
 
     private const DEFAULT_CURRENCY_CODE = 'TND';
@@ -122,12 +120,11 @@ final class BootstrapAgencyAccountCommand extends Command
             taxId: self::TAX_ID,
             tradeRegister: null,
             legalFormCode: null,
-            isVatSubject: self::IS_VAT_SUBJECT,
             website: self::WEBSITE,
         ));
 
         $io->success(sprintf(
-            'organization_identity créée (tax_id=%s, website=%s, is_vat_subject=false).',
+            'organization_identity créée (tax_id=%s, website=%s).',
             self::TAX_ID,
             self::WEBSITE,
         ));
